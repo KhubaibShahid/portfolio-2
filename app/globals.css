@@ -1,0 +1,1310 @@
+@import "tailwindcss";
+
+/* -------------------------------------------------------------------------- */
+/*  Design tokens (exposed to Tailwind as utilities: bg-white, text-black, …)  */
+/* -------------------------------------------------------------------------- */
+
+@theme {
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-neutral-300: #e3e1de;
+
+  --font-display: "Ppneuemontreal", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/*
+ * Where the about tile parks itself in the hero's bottom-right corner.
+ *
+ * Three places read these: the tile (`.about-media-w`), the hero paragraph
+ * stacked above it (`.hero-about-note`) — which sits in a different layer of
+ * the tree and can only line up by sharing the numbers — and About.tsx, which
+ * takes them as the start of the tween that opens the tile to full screen.
+ *
+ * The percentages resolve against a 100vh box in every one of those cases, so
+ * `--about-tile-h` is as usable inside the note's `bottom` calc as it is on the
+ * tile's own height.
+ */
+:root {
+  --about-tile-w: 20%;
+  --about-tile-h: 23%;
+  --about-tile-gap: 1.25rem;
+  /* Clears the hero's bottom row — `Creative studio in Paris` and the socials. */
+  --about-tile-lift: 3.5rem;
+
+  /*
+   * Where the tile lands once it has opened: flush to the left half of the
+   * screen, leaving the other half to `.about-copy`. About.tsx reads these as
+   * the far end of the same tween, and the copy panel sizes itself off
+   * `--about-open-w` so the two halves can never drift apart.
+   *
+   * `--about-open-right` is the complement of the width — kept as its own token
+   * rather than a `calc()` because GSAP has to interpolate it as a plain value.
+   */
+  --about-open-w: 50%;
+  --about-open-right: 50%;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Fonts — PP Neue Montreal, same files the original site serves              */
+/* -------------------------------------------------------------------------- */
+
+@font-face {
+  font-family: "Ppneuemontreal";
+  src: url(https://cdn.prod.website-files.com/6a0c501c42b9751b78a9d1a7/6a0c501c42b9751b78a9d1cd_PPNeueMontreal-Regular.woff2)
+    format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Ppneuemontreal";
+  src: url(https://cdn.prod.website-files.com/6a0c501c42b9751b78a9d1a7/6a0c501c42b9751b78a9d1cc_PPNeueMontreal-Medium.woff2)
+    format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Ppneuemontreal";
+  src: url(https://cdn.prod.website-files.com/6a0c501c42b9751b78a9d1a7/6a0c501c42b9751b78a9d1d2_PPNeueMontreal-SemiBold.woff2)
+    format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Ppneuemontreal";
+  src: url(https://cdn.prod.website-files.com/6a0c501c42b9751b78a9d1a7/6a0c501c42b9751b78a9d1d4_PPNeueMontreal-Bold.woff2)
+    format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Base                                                                       */
+/* -------------------------------------------------------------------------- */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  height: auto;
+  /* Lenis drives scrolling; native smooth behaviour would fight it. */
+  scroll-behavior: auto;
+}
+
+body {
+  background-color: var(--color-white);
+  color: var(--color-black);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.1;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Elements the reveal animation controls start hidden. */
+[data-line],
+[data-letter],
+[data-rise] {
+  opacity: 0;
+}
+
+/*
+ * `display: block` matters: these get `transform` applied by GSAP, and
+ * transforms are ignored on non-replaced inline elements.
+ */
+.line-child {
+  display: block;
+  padding-bottom: 0.15em;
+}
+
+.line-mask-child-mask {
+  position: relative;
+  display: block;
+  text-align: start;
+  overflow: clip;
+  margin-bottom: -0.15em;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Hero — the 300vh stage that holds the fluid canvas                         */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * The runway the hero holds still over: its own 300vh of stage, plus the 100vh
+ * of scroll the about tile takes to open. That overshoot is the whole pin —
+ * see `.section-w` for how it cashes out.
+ */
+.hero-pin-w {
+  position: relative;
+  height: 400vh;
+  margin-top: -100vh;
+}
+
+/*
+ * A 300vh stage with the hero centred inside it. The wrapper's -100vh puts that
+ * middle band in the viewport at scroll 0; the height above and below it is
+ * what the fluid canvas spans, and what drives its scroll fade-out.
+ *
+ * Sticking it at `top: -100vh` holds that same band against the top of the
+ * viewport, and `.hero-pin-w` runs exactly 100vh past the end of this box, so
+ * it lets go the moment the about image finishes opening over it. Until then
+ * the hero stays put rather than sliding out from under the image.
+ */
+.section-w {
+  background-color: var(--color-black);
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 300vh;
+  display: flex;
+  position: sticky;
+  top: -100vh;
+  overflow: hidden;
+}
+
+/*
+ * The fluid canvas spans this whole 300vh box but only draws the banner across
+ * the middle third — the rest of it is the white base the banner was baked
+ * onto. That white sits below the band, out of frame for as long as the pin
+ * holds, and sweeps up through the viewport the moment it lets go. This puts
+ * the section's own black back over it, and rides the pin because it lives in
+ * here. Above the canvas's z-index 1, and clear of the copy's band entirely.
+ */
+.section-w::after {
+  content: "";
+  position: absolute;
+  inset: 200vh 0 0;
+  z-index: 2;
+  background-color: var(--color-black);
+}
+
+/*
+ * The layer the liquid dissolves the hero away to reveal.
+ *
+ * Only the centred 100vh band of the 300vh stage is ever on screen — the top
+ * third is pulled above the fold and the showreel covers the bottom — so the
+ * image is sized to that band rather than to the whole stage. Covering 300vh
+ * would crop a 16:9 photo down to a narrow vertical sliver.
+ */
+.video-hero-bg {
+  background: url(/back_hero.jpeg) no-repeat center / cover;
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  z-index: 0;
+  width: 100%;
+  height: 100vh;
+  padding: 0;
+  display: block;
+}
+
+/*
+ * Phones only.
+ *
+ * On a wide screen the copy sits in the empty margin beside the subject, so
+ * `mix-blend-mode: difference` has a clean near-white backdrop to invert
+ * against and the effect carries the design. On a phone the banner fills the
+ * width and the copy lands on the subject itself — and differencing against
+ * busy mid-tones is the one case that blend mode cannot survive, because white
+ * text over mid-grey resolves to mid-grey. Darkening the backdrop does not fix
+ * it either; it just moves more of the photo into that mid range.
+ *
+ * So small screens drop the blend entirely (see `.section-fake-hero` below)
+ * and read plain white over this scrim instead.
+ *
+ * `z-index: 2` puts it above the canvas; `.section-fake-hero` shares that
+ * index and comes later in the DOM, so the copy still paints on top.
+ */
+.hero-scrim {
+  z-index: 2;
+  pointer-events: none;
+  width: 100%;
+  height: 100vh;
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+}
+
+@media (max-width: 991px) {
+  .hero-scrim {
+    display: block;
+    background:
+      linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.66) 0%,
+        rgba(0, 0, 0, 0.44) 34%,
+        rgba(0, 0, 0, 0) 60%
+      ),
+      linear-gradient(to top, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 24%);
+  }
+}
+
+/* Injected by the MaskReveal engine; sits between the bg and the hero. */
+.mask-reveal-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.section.hero-home {
+  background-color: var(--color-white);
+  width: 100%;
+  height: 100vh;
+  position: relative;
+  z-index: 0;
+}
+
+/* Renamed from the original's `.container` to avoid colliding with
+   Tailwind's `container` utility, which would cap the hero at 80rem. */
+.container-hero {
+  flex-flow: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  display: flex;
+}
+
+/*
+ * The hero banner. Full-bleed inside the 100vh hero so front_hero.jpeg is the
+ * whole first screen; `overflow: hidden` is the mask the loader slides it up
+ * behind. The engine bakes this `<img>` at exactly this rect, so the texture
+ * and the DOM element line up pixel-for-pixel.
+ */
+.nothin-hero-w {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.hero-banner-img {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  object-position: center;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Kept for the wordmark hero — swap <img className="hero-banner-img"> back to
+   <HeroWordmark> in Hero.tsx to use it again. */
+.nothin-hero-svg {
+  width: 100%;
+}
+
+/*
+ * Foreground hero UI. `mix-blend-mode: difference` is what makes this copy
+ * invert itself as the white sheet dissolves into the dark image beneath.
+ */
+.section-fake-hero {
+  z-index: 2;
+  width: 100%;
+  height: 100vh;
+  color: var(--color-white);
+  mix-blend-mode: difference;
+  flex-flow: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-top: 100vh;
+  padding: 1rem 1.25rem;
+  display: flex;
+  position: absolute;
+  inset: 0% 0% auto;
+}
+
+/* See `.hero-scrim`: the blend is a desktop treatment only. */
+@media (max-width: 991px) {
+  .section-fake-hero {
+    mix-blend-mode: normal;
+    color: var(--color-white);
+  }
+}
+
+.div-block {
+  width: 100%;
+}
+
+.p-l {
+  font-size: 1.5625rem;
+  line-height: 1;
+}
+
+.space-24 {
+  padding-top: 1.5rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Hero intro — name, cycling roles, bio, CTAs                                */
+/* -------------------------------------------------------------------------- */
+
+.hero-intro {
+  flex-flow: column;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 46rem;
+  display: flex;
+}
+
+/*
+ * Bold with tight tracking, to sit in the same register as the `Nothin'`
+ * wordmark — that mark is vector art rather than type, but its stems are cut
+ * at roughly PP Neue Montreal's Bold weight, so this is as close as the family
+ * gets to it.
+ */
+.hero-name {
+  letter-spacing: -0.04em;
+  font-size: clamp(2.25rem, 8vw, 5.5rem);
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* A step below the name, so the two read as a pair rather than compete. */
+.hero-roles {
+  letter-spacing: -0.015em;
+  margin-top: 0.4rem;
+  font-size: clamp(1.0625rem, 2.2vw, 1.75rem);
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+/*
+ * Every role shares one grid cell, so they stack without leaving the flow: the
+ * box sizes itself to the widest of them and to one line's height, and the
+ * line never reflows as they swap. Absolute positioning would collapse this to
+ * zero width — and `overflow: clip` would then crop the text away entirely.
+ */
+.role-cycler {
+  display: grid;
+  overflow: clip;
+}
+
+.role {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+  padding-bottom: 0.2em;
+  will-change: transform;
+}
+
+.hero-bio {
+  max-width: 34rem;
+  margin-top: 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.hero-cta {
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  margin-top: 1.75rem;
+  display: flex;
+}
+
+/*
+ * The about teaser, pinned to the opposite corner from the rest of this block
+ * and sitting directly above the tile <About> parks there.
+ *
+ * It is markup in <HeroIntro> rather than in <About> for two reasons: this is
+ * the `mix-blend-mode: difference` layer, the only place text stays legible
+ * once the liquid starts swapping the pale banner for the dark image beneath;
+ * and being in here it picks up the same `data-rise` entrance as the bio and
+ * the buttons instead of needing its own.
+ */
+.hero-about-note {
+  position: absolute;
+  right: var(--about-tile-gap);
+  bottom: calc(var(--about-tile-lift) + var(--about-tile-h) + 1rem);
+  width: min(21rem, 34vw);
+  text-align: right;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  line-height: 1.55;
+}
+
+/*
+ * Both buttons live inside the `mix-blend-mode: difference` layer, so their
+ * colours are inverted against whatever is behind them — a white fill reads
+ * black over the pale banner and white over the dark reveal. That inversion is
+ * what puts a black button with white text on screen, so the source colours
+ * below are the opposite of what you see.
+ *
+ * Fill and ink hold still on hover — the movement is in the label, which
+ * <ScrambleLink> decrypts character by character. All the button itself adds
+ * is a 2px lift and the dot coming up to full strength.
+ *
+ * The shape is a rounded tag with the top-left corner sliced off at 45° and a
+ * small indicator dot in the top-right. `clip-path` takes that corner off and
+ * `border-radius` softens the other three. The clip also removes the stretch of
+ * border that ran through the corner, so ::after redraws the missing edge as a
+ * 1px diagonal — and carries the dot in the same layer.
+ */
+.btn {
+  /* How much of the top-left corner the diagonal eats. Keep it at or above
+     --btn-radius, or a stub of the rounded corner survives the clip. */
+  --btn-cut: 0.6875rem;
+  --btn-radius: 0.5rem;
+
+  /* Defaults are the ghost's; both variants restate them for readability. */
+  --btn-fill: rgba(0, 0, 0, 0);
+  --btn-ink: var(--color-white);
+
+  position: relative;
+  align-items: center;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background-color: var(--btn-fill);
+  color: var(--btn-ink);
+  border: 1px solid var(--color-white);
+  border-radius: var(--btn-radius);
+  clip-path: polygon(var(--btn-cut) 0, 100% 0, 100% 100%, 0 100%, 0 var(--btn-cut));
+  padding: 0.875rem 1.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  display: inline-flex;
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Registered so it can be transitioned — an unregistered custom property in a
+   gradient would snap. `inherits: false` keeps it local to the ::after that
+   declares it, which is the only place it is read. */
+@property --btn-dot {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #8a8a8a;
+}
+
+/*
+ * The chamfer's own 1px edge plus the indicator dot, drawn as two background
+ * layers on one box. `inset: -1px` puts that box on the border box, so the
+ * diagonal lands exactly where the clip cut and meets both borders flush.
+ */
+.btn::after {
+  --btn-dot: #8a8a8a;
+
+  content: "";
+  z-index: 1;
+  pointer-events: none;
+  background-image: radial-gradient(
+      circle at calc(100% - 0.5rem) 0.5rem,
+      var(--btn-dot) 0 2.3px,
+      rgba(0, 0, 0, 0) 2.8px
+    ),
+    linear-gradient(
+      135deg,
+      rgba(0, 0, 0, 0) calc(50% - 0.9px),
+      var(--color-white) calc(50% - 0.4px) calc(50% + 0.4px),
+      rgba(0, 0, 0, 0) calc(50% + 0.9px)
+    );
+  background-repeat: no-repeat;
+  background-size: 100% 100%, var(--btn-cut) var(--btn-cut);
+  transition: --btn-dot 0.4s ease;
+  position: absolute;
+  inset: -1px;
+}
+
+.btn-solid {
+  --btn-fill: var(--color-white);
+  --btn-ink: var(--color-black);
+}
+
+.btn-ghost {
+  --btn-fill: rgba(0, 0, 0, 0);
+  --btn-ink: var(--color-white);
+}
+
+/*
+ * The label rides in two layers so a scrambled character can never resize the
+ * button: the hidden copy reserves the finished text's width, and the animated
+ * copy is centred on top of it. Random glyphs that run wider than the real ones
+ * spill into the padding instead of pushing the button open.
+ */
+.btn-label {
+  position: relative;
+  display: inline-block;
+}
+
+.btn-label__size {
+  visibility: hidden;
+}
+
+.btn-label__text {
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  position: absolute;
+  inset: 0;
+}
+
+@media (hover: hover) {
+  .btn:hover {
+    transform: translateY(-2px);
+  }
+
+  .btn:hover::after {
+    --btn-dot: var(--btn-ink);
+  }
+}
+
+/* An `outline` would be cropped away by the clip, so the focus ring is drawn
+   inside ::after — the one layer that sits above the label. */
+.btn:focus-visible::after {
+  --btn-dot: var(--btn-ink);
+  box-shadow: inset 0 0 0 2px var(--btn-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn:hover {
+    transform: none;
+  }
+}
+
+.link-hero-bottom-w {
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  display: flex;
+}
+
+.link-hero-w {
+  gap: 0.875rem;
+  justify-content: flex-start;
+  align-items: center;
+  display: flex;
+}
+
+.link-hero-lang-w {
+  gap: 1.375rem;
+  justify-content: flex-start;
+  align-items: center;
+  display: flex;
+}
+
+.link {
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  position: relative;
+  display: inline-block;
+}
+
+.link-lang {
+  background-color: var(--color-white);
+  color: var(--color-black);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  padding: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Underline that wipes in on hover. */
+.link-underline {
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0%;
+  height: 1px;
+  background: currentColor;
+  pointer-events: none;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Nav                                                                        */
+/* -------------------------------------------------------------------------- */
+
+.nav-boiler {
+  z-index: 1001;
+  pointer-events: none;
+  width: 100vw;
+  height: 4rem;
+  color: var(--color-white);
+  mix-blend-mode: difference;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.28125rem 1.25rem 0;
+  display: flex;
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+.nav-logo-wrap {
+  pointer-events: auto;
+  min-width: 6.2rem;
+}
+
+.nav-logo {
+  height: 1.25rem;
+  overflow: visible;
+}
+
+.menu-w {
+  pointer-events: auto;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  position: relative;
+}
+
+.menu-btn {
+  gap: 0.375rem;
+  cursor: default;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 0.1rem;
+  display: flex;
+  position: relative;
+}
+
+.menu-svg {
+  width: 0.375rem;
+  height: 0.375rem;
+  margin-right: -0.75rem;
+  position: absolute;
+}
+
+.menu-links-w {
+  gap: 0.1rem;
+  flex-flow: column;
+  align-items: flex-end;
+  display: flex;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Loader                                                                     */
+/* -------------------------------------------------------------------------- */
+
+.loader {
+  z-index: 1001;
+  background-color: var(--color-black);
+  width: 100%;
+  height: 100vh;
+  position: fixed;
+  inset: 0%;
+  overflow: hidden;
+}
+
+.loader-c {
+  width: 100%;
+  height: 100%;
+  color: var(--color-white);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  flex-flow: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.875rem;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+}
+
+.loader-anim {
+  justify-content: center;
+  align-items: flex-start;
+  height: 7.6rem;
+  display: flex;
+}
+
+.loader-nbr-w {
+  z-index: 99;
+  position: relative;
+}
+
+.loader-img-w {
+  pointer-events: none;
+  justify-content: center;
+  align-items: center;
+  width: 1rem;
+  height: 20rem;
+  margin-top: -25%;
+  display: flex;
+  position: relative;
+}
+
+.n-load {
+  opacity: 0;
+  width: 6.25rem;
+  margin-right: -0.3125rem;
+}
+
+.apos-load {
+  width: 2.5625rem;
+  transform: scale(0);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  About — the hero's corner tile, scrubbed open to fill the screen           */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * Stacked on top of the hero rather than after it. `.hero-pin-w` ends at 300vh,
+ * so pulling this back by exactly that starts it at scroll 0 with the tile
+ * already in the hero's corner. Of its 300vh the sticky stage holds the first
+ * 200vh — one viewport to open the image, one to hold it full screen — and the
+ * showreel's own -100vh then lands on the unstick, covering this as it goes.
+ */
+.section.about {
+  position: relative;
+  height: 300vh;
+  margin-top: -300vh;
+  /* This box lies over the hero's social links for the whole time the tile is
+     still small. Nothing in here is interactive, and the fluid reads the
+     pointer off `window`, so the events are better off passing straight down. */
+  pointer-events: none;
+}
+
+/*
+ * Picks up where the hero stage stops. `.section-w::after` blacks out the last
+ * third of that stage; past its end there is nothing left but the page, and the
+ * image is normally full screen by then and covering it — but `scrub` lags the
+ * scroll and a fast flick gets there first, so this catches the white.
+ *
+ * 200vh, not 100vh: while the hero is pinned it fills the viewport from a
+ * document position that keeps sliding, and a rect anchored any higher than the
+ * stage's own end would cut into it.
+ */
+.section.about::before {
+  content: "";
+  position: absolute;
+  inset: 200vh 0 0;
+  z-index: 2;
+  background-color: var(--color-black);
+}
+
+.about-stage {
+  position: sticky;
+  top: 0;
+  /* Over `.section-fake-hero`'s z-index 2: the image has to cover the hero copy
+     on its way open, not slide under it. */
+  z-index: 3;
+  height: 100vh;
+}
+
+/*
+ * The blackout the image used to be. Opening to half the frame leaves the hero
+ * showing through the other half, so this cross-fades to black underneath the
+ * whole stage over the same window — which also lets the image, whose own
+ * background is black, sit on the panel without a seam.
+ *
+ * Its inline opacity is the signal Hero.tsx polls: at 1 there is nothing of the
+ * hero left to see and the fluid sim parks itself.
+ */
+.about-backdrop {
+  position: absolute;
+  inset: 0;
+  background-color: var(--color-black);
+  opacity: 0;
+}
+
+/*
+ * Rest rect from the shared tokens; About.tsx scrubs all four values to the
+ * open rect — the left half, flush to the top, left and bottom edges. Both ends
+ * of that tween are percentages so GSAP keeps writing `%` into the inline width.
+ */
+.about-media-w {
+  position: absolute;
+  right: var(--about-tile-gap);
+  bottom: var(--about-tile-lift);
+  width: var(--about-tile-w);
+  height: var(--about-tile-h);
+  overflow: hidden;
+}
+
+.about-media {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  /*
+   * Anchored to the top, which only the small tile ever feels. The tile is
+   * wider than the image, so `cover` scales it to the width and spends the
+   * difference cropping top and bottom — and a centred crop takes the crown of
+   * the helmet with it. Top-aligning spends all of it on the bottom instead,
+   * which is empty jacket.
+   *
+   * The open rect is taller than the image, so there is no vertical overflow
+   * left to position by then and only the centred horizontal crop applies.
+   * Same on mobile, where the box is taller still.
+   */
+  object-position: 50% 0%;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/*
+ * The other half of the split. Sized off `--about-open-w` so it always meets
+ * the image exactly where the tween leaves it, and held at `opacity: 0` until
+ * the scrub fades it in — without that it would sit over the hero from scroll 0.
+ */
+.about-copy {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: calc(100% - var(--about-open-w));
+  height: 100%;
+  flex-flow: column;
+  justify-content: center;
+  padding: 3rem clamp(1.5rem, 4vw, 4.5rem);
+  color: var(--color-white);
+  opacity: 0;
+  display: flex;
+  /* Re-enabled by About.tsx once the panel is open — see the note there. */
+  pointer-events: none;
+}
+
+.about-label {
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.about-title {
+  letter-spacing: -0.03em;
+  margin-top: 1.5rem;
+  font-size: clamp(2.25rem, 3.6vw, 4rem);
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.about-body {
+  max-width: 32rem;
+  margin-top: 1.75rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.about-body + .about-body {
+  margin-top: 1rem;
+  opacity: 0.7;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Showreel — pulled up over the hero; its scale gates the fluid sim          */
+/* -------------------------------------------------------------------------- */
+
+.section.showreel {
+  margin-top: -100vh;
+  position: relative;
+  z-index: 3;
+  background-color: var(--color-black);
+  color: var(--color-white);
+}
+
+.container-showreel {
+  padding-bottom: 5.3125rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Projects — continues the showreel's black run                              */
+/* -------------------------------------------------------------------------- */
+
+.section.projects {
+  position: relative;
+  z-index: 3;
+  background-color: var(--color-black);
+  color: var(--color-white);
+}
+
+.container-projects {
+  padding: 1.25rem 1.25rem 7.5rem;
+}
+
+.projects-gallery {
+  margin-top: 2.5rem;
+}
+
+.projects-hint {
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  margin-top: 1.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Project detail — image left, sliding panel right                           */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * Above the nav and the loader, both of which sit at 1001.
+ */
+.project-detail {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+}
+
+/* See ProjectDetail: the blended nav costs a backdrop read per frame. */
+body.detail-open .nav-boiler {
+  visibility: hidden;
+}
+
+.project-detail__backdrop {
+  position: absolute;
+  inset: 0;
+  background-color: var(--color-black);
+}
+
+/*
+ * The left half. GSAP tweens `top/left/width/height` on the way in and out and
+ * then clears them, so this rule is what holds the resting position — a resize
+ * while the dialog is open still lands correctly.
+ */
+.project-detail__media {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 50vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #0a0713;
+  will-change: transform;
+}
+
+/*
+ * Explicit `top/left` rather than `inset`, because the grow animation replaces
+ * this box with the image's painted rect and needs those to override cleanly.
+ */
+.project-detail__media img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  /* The global `img { max-width: 100% }` would clamp the grow animation, which
+     widens this box past its container on purpose. */
+  max-width: none;
+  object-fit: cover;
+  user-select: none;
+  -webkit-user-drag: none;
+  will-change: transform;
+}
+
+/*
+ * The gallery panel's caption gradient, repeated here so the two states match
+ * at the moment of the click. `.ag-panel__overlay` in AccordionGallery.css is
+ * the source of these numbers — keep them in step. Faded out by `applyGrow` as
+ * the media expands, so the detail view itself is the untouched image.
+ */
+.project-detail__scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent 45%, rgba(0, 0, 0, 0.78) 100%);
+  will-change: opacity;
+}
+
+
+.project-detail__panel {
+  will-change: transform;
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 50vw;
+  height: 100vh;
+  background-color: var(--color-black);
+  color: var(--color-white);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-flow: column;
+}
+
+.project-detail__close {
+  align-self: flex-end;
+  flex: 0 0 auto;
+  gap: 0.5rem;
+  align-items: center;
+  cursor: pointer;
+  color: inherit;
+  background: none;
+  border: 0;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin: 1.25rem 1.25rem 0;
+  padding: 0.5rem;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  transition: opacity 0.3s ease;
+}
+
+.project-detail__close svg {
+  width: 0.7rem;
+  height: 0.7rem;
+  overflow: visible;
+}
+
+.project-detail__close:hover {
+  opacity: 0.6;
+}
+
+.project-detail__close:focus-visible {
+  outline: 1px solid var(--color-white);
+  outline-offset: 2px;
+}
+
+.project-detail__body {
+  flex-flow: column;
+  align-items: flex-start;
+  padding: 2rem 3rem 3rem;
+  display: flex;
+}
+
+.project-detail__meta {
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.project-detail__title {
+  letter-spacing: -0.03em;
+  margin-top: 0.875rem;
+  font-size: clamp(2rem, 3.4vw, 3.5rem);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.project-detail__desc {
+  max-width: 34rem;
+  margin-top: 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.55;
+}
+
+.project-detail__tags {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  padding: 0;
+  list-style: none;
+  display: flex;
+}
+
+.project-detail__tags li {
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  padding: 0.4375rem 0.75rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.project-detail__links {
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  margin-top: 2rem;
+  display: flex;
+}
+
+/*
+ * Stacked below the desktop split. The panel arrives from the bottom instead
+ * of the right — ProjectDetail reads the same breakpoint to pick the axis.
+ */
+@media (max-width: 991px) {
+  .project-detail__media {
+    width: 100vw;
+    height: 38vh;
+  }
+
+  .project-detail__panel {
+    top: auto;
+    bottom: 0;
+    width: 100vw;
+    height: 62vh;
+  }
+
+  .project-detail__body {
+    padding: 1.5rem 1.25rem 2.5rem;
+  }
+
+  .project-detail__close {
+    margin: 1rem 1rem 0;
+  }
+}
+
+@media (max-width: 991px) {
+  .container-projects {
+    padding-bottom: 5rem;
+  }
+  .projects-gallery {
+    margin-top: 1.75rem;
+  }
+}
+
+.video-showreel-full-w {
+  justify-content: flex-end;
+  align-self: flex-end;
+  align-items: flex-end;
+  width: 100%;
+  height: 100%;
+  margin-left: auto;
+  display: flex;
+  overflow: hidden;
+}
+
+.showreel-stage {
+  height: 100vh;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 1.25rem;
+}
+
+.showreel-media {
+  width: 100%;
+  height: 100%;
+  background: url(/simple-bg.png) no-repeat center / cover;
+}
+
+.h1-home {
+  letter-spacing: -0.03em;
+  font-size: 5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.space-150 {
+  padding-top: 9.375rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Responsive                                                                 */
+/* -------------------------------------------------------------------------- */
+
+@media (max-width: 991px) {
+  .hero-pin-w {
+    height: auto;
+    margin-top: 0;
+  }
+  /* Still positioned — `.section-fake-hero` is absolute against this box. */
+  .section-w {
+    height: 100svh;
+    position: relative;
+    top: auto;
+  }
+  .section-fake-hero {
+    height: 100svh;
+    margin-top: 0;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  .section.showreel {
+    margin-top: 0;
+  }
+  /* No stage to scrub over: the about section stacks like any other block, and
+     the paragraph rejoins the hero copy in the flow below the buttons. */
+  .section.about {
+    height: auto;
+    margin-top: 0;
+    background-color: var(--color-black);
+  }
+  .section.about::before {
+    display: none;
+  }
+  .about-stage {
+    position: static;
+    height: auto;
+  }
+  .about-backdrop {
+    display: none;
+  }
+  .about-media-w {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    height: 65vh;
+  }
+  /* Stacked under the image rather than beside it, and visible from the start:
+     the scrub that would otherwise fade it in never runs down here. */
+  .about-copy {
+    position: static;
+    width: auto;
+    height: auto;
+    opacity: 1;
+    pointer-events: auto;
+    padding: 2.5rem 1rem 4rem;
+  }
+  .about-title {
+    font-size: 2.25rem;
+  }
+  .hero-about-note {
+    position: static;
+    width: auto;
+    max-width: 34rem;
+    margin-top: 1.25rem;
+    text-align: left;
+  }
+  .h1-home {
+    font-size: 2.5rem;
+  }
+  .p-l {
+    font-size: 1.125rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mask-reveal-canvas {
+    display: none;
+  }
+}
