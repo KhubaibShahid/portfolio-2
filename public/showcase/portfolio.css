@@ -1,0 +1,112 @@
+/*
+ * This site's changes to THE SHIFT's theme, loaded after its own stylesheet.
+ *
+ * Everything is hidden rather than removed from the markup: the theme's scripts
+ * look these elements up by class, and a missing one is a null they were never
+ * written to expect.
+ */
+
+/* Its logo, navigation and menu button; the JA/EN switch; the "(DRAG)" label
+   bottom right; the minimap bottom left, replaced by `.ks-meter` below; and
+   the circle that trails the pointer. */
+.site-header,
+.site-lang,
+.parts-b4,
+.slide-scroll-control,
+.ui-cursor {
+  display: none !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  The cursor                                                                 */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * A "DRAG" disc with an angle on either side, everywhere on the page — the
+ * slider is the whole page, and dragging is what it does. `grab` is the
+ * fallback for anything that will not take an image.
+ *
+ * The image is 92×60 with its hotspot in the middle of the disc; the 2x file is
+ * the same cursor for high-density screens. Rendered from the site's own face,
+ * which a cursor image cannot load for itself.
+ */
+html,
+html * {
+  cursor: url("cursor-drag.png") 46 30, grab !important;
+  cursor: -webkit-image-set(url("cursor-drag.png") 1x, url("cursor-drag@2x.png") 2x) 46 30, grab !important;
+  cursor: image-set(url("cursor-drag.png") 1x, url("cursor-drag@2x.png") 2x) 46 30, grab !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  The slide meter — bottom left, in place of the minimap                     */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * The navbar's pill, in the minimap's old slot: the count, then one segment per
+ * project with the one in the middle of the screen lit in the site's amber.
+ * The markup and the script that keeps it current are in PortfolioShowcase.tsx.
+ */
+.ks-meter {
+  z-index: 10;
+  height: calc(var(--gw) * 2);
+  align-items: center;
+  display: flex;
+  position: absolute;
+  bottom: 0;
+  left: var(--gw);
+  pointer-events: none;
+}
+
+.ks-meter > * {
+  flex: none;
+}
+
+.ks-meter__count {
+  height: 2.75rem;
+  align-items: center;
+  padding: 0 1rem 0 1.125rem;
+  border-radius: 999px 0 0 999px;
+  background-color: #161616;
+  color: #fff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  display: flex;
+}
+
+.ks-meter__total {
+  opacity: 0.45;
+}
+
+.ks-meter__track {
+  height: 2.75rem;
+  gap: 0.3125rem;
+  align-items: center;
+  padding: 0 1.25rem 0 0.25rem;
+  border-radius: 0 999px 999px 0;
+  background-color: #161616;
+  display: flex;
+}
+
+.ks-meter__seg {
+  width: 1.375rem;
+  height: 0.25rem;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.18);
+  transition:
+    background-color 0.4s ease,
+    box-shadow 0.4s ease;
+}
+
+.ks-meter__seg.is-on {
+  background-color: #ffb21e;
+  box-shadow: 0 0 8px #ffb21e;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ks-meter__seg {
+    transition: none;
+  }
+}

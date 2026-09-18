@@ -75,7 +75,7 @@ export interface MaskRevealOptions {
   settings?: Partial<FluidSettings>;
   /**
    * While this returns false the simulation is cleared and parked — used to
-   * switch the effect off once the hero is scrolled away behind the showreel.
+   * switch the effect off once the hero is covered by the about section.
    */
   isActive?: () => boolean;
 }

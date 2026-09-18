@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import ScrambleLink from "./ScrambleLink";
+import { CALL_HREF } from "@/lib/contact";
 
 /* -------------------------------------------------------------------------- */
 /*  Copy — everything you would want to edit lives here                        */
@@ -28,7 +29,6 @@ const BIO =
 const ABOUT_NOTE =
   "Somewhere between design and engineering. I like the problems that need both — a clear interface on top, something well built underneath.";
 
-const CALL_HREF = "https://calendly.com/hello-noth/30min";
 const ABOUT_HREF = "#about";
 
 /** Seconds a role holds on screen, and how long the swap to the next takes. */

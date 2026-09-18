@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { SOCIALS } from "@/lib/contact";
 
 /* -------------------------------------------------------------------------- */
 /*  Copy — everything you would want to edit lives here                        */
@@ -12,6 +13,7 @@ const ABOUT_LABEL = "About";
 
 /** One entry per masked line of the heading — they reveal in this order. */
 const ABOUT_TITLE = ["From the first pixel", "to the last query."];
+
 
 /** Placeholder about copy — swap for the real thing. */
 const ABOUT_BODY = [
@@ -52,7 +54,7 @@ export default function About() {
 
     const ctx = gsap.context(() => {
       // Below the breakpoint there is no stage to scrub over — the section
-      // stacks like any other block. Same call the showreel makes.
+      // stacks like any other block.
       if (window.matchMedia("(max-width: 991px)").matches) return;
 
       // The rest rect is CSS's to own; this only restates it as the tween's
@@ -63,12 +65,23 @@ export default function About() {
 
       const lines = copy.querySelectorAll<HTMLElement>(".line-child");
       const paragraphs = copy.querySelectorAll<HTMLElement>(".about-body");
+      const socials = copy.querySelectorAll<HTMLElement>(".about-social-item");
 
       /*
-       * One viewport of scroll, split between the four moves. `immediateRender`
-       * is off across the board so nothing is written until the trigger is
-       * reached — until then CSS holds every rest value, which is what keeps
-       * the tile small and the copy hidden while the hero is on screen.
+       * How long the whole thing takes, in viewports.
+       *
+       * Owned by CSS rather than by this file, because the hero's pin and this
+       * section's own stage are sized off the same number and the three have to
+       * agree to the pixel — see `--about-open-vh`. Falls back to the old
+       * single viewport if the token is ever missing.
+       */
+      const openVh = parseFloat(token("--about-open-vh")) || 1;
+
+      /*
+       * The opening, split between the five moves. `immediateRender` is off
+       * across the board so nothing is written until the trigger is reached —
+       * until then CSS holds every rest value, which is what keeps the tile
+       * small and the copy hidden while the hero is on screen.
        *
        * The heading lines are the exception: `yPercent` has no CSS rest state,
        * so they start at the same beat the panel begins fading in and are
@@ -79,9 +92,9 @@ export default function About() {
         scrollTrigger: {
           trigger: section,
           start: "top top",
-          // One viewport to open. The sticky stage holds the finished layout
-          // for the viewport after that.
-          end: () => "+=" + window.innerHeight,
+          // The sticky stage holds the finished layout for the viewport after
+          // this, whatever this works out to.
+          end: () => "+=" + window.innerHeight * openVh,
           scrub: 1,
           invalidateOnRefresh: true,
         },
@@ -94,12 +107,14 @@ export default function About() {
           height: token("--about-tile-h"),
           right: token("--about-tile-gap"),
           bottom: token("--about-tile-lift"),
+          borderRadius: token("--about-tile-radius"),
         },
         {
           width: token("--about-open-w"),
           height: "100%",
           right: token("--about-open-right"),
           bottom: 0,
+          borderRadius: "0rem",
           ease: "power2.inOut",
           duration: 1,
         },
@@ -133,6 +148,17 @@ export default function About() {
           { y: 22 },
           { y: 0, ease: "power2.out", duration: 0.28, stagger: 0.04 },
           0.66
+        )
+        /*
+         * Last in, and on the `li` rather than the anchor — the anchor's own
+         * `transform` is the hover lift, and an inline one written here would
+         * outrank it for good. `.about-socials` has the full note.
+         */
+        .fromTo(
+          socials,
+          { y: 16, opacity: 0 },
+          { y: 0, opacity: 1, ease: "power2.out", duration: 0.24, stagger: 0.05 },
+          0.74
         );
 
       /*
@@ -144,8 +170,8 @@ export default function About() {
        */
       ScrollTrigger.create({
         trigger: section,
-        start: () => "top+=" + window.innerHeight * 0.8 + " top",
-        end: () => "top+=" + window.innerHeight * 2 + " top",
+        start: () => "top+=" + window.innerHeight * (openVh - 0.2) + " top",
+        end: () => "top+=" + window.innerHeight * (openVh + 1) + " top",
         invalidateOnRefresh: true,
         onToggle: (self) => {
           copy.style.pointerEvents = self.isActive ? "auto" : "none";
@@ -158,6 +184,9 @@ export default function About() {
 
   return (
     <section className="section about" ref={sectionRef} aria-labelledby="about-title">
+      {/* Where `#about` lands — see `.about-anchor`. */}
+      <span className="about-anchor" id="about" aria-hidden="true" />
+
       <div className="about-stage">
         {/* Takes over the hero's blackout now that the image only holds half
             the frame — see the component note. */}
@@ -190,6 +219,24 @@ export default function About() {
               {paragraph}
             </p>
           ))}
+
+          <ul className="about-socials">
+            {SOCIALS.map((social) => (
+              <li className="about-social-item" key={social.label}>
+                <a
+                  className="about-social"
+                  href={social.href}
+                  target={social.href.startsWith("mailto:") ? undefined : "_blank"}
+                  rel={social.href.startsWith("mailto:") ? undefined : "noreferrer"}
+                  aria-label={social.label}
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+                    <path d={social.path} />
+                  </svg>
+                </a>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </section>

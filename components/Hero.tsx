@@ -36,19 +36,9 @@ const HERO_LAYERS = {
 };
 
 /**
- * The percentage GSAP last scrubbed into an element's inline width, or null
- * while it is untouched — before its trigger is reached, or on the mobile
- * layouts that skip the tween entirely.
- */
-function inlineWidth(selector: string): number | null {
-  const el = document.querySelector<HTMLElement>(selector);
-  const match = el?.style.width.trim().match(/^([\d.]+)%$/);
-  return match ? parseFloat(match[1]) : null;
-}
-
-/**
- * The same question for a scrubbed opacity: the value GSAP last wrote inline,
- * or null while the element is untouched.
+ * The opacity GSAP last scrubbed into an element inline, or null while it is
+ * untouched — before its trigger is reached, or on the mobile layouts that skip
+ * the tween entirely.
  */
 function inlineOpacity(selector: string): number | null {
   const el = document.querySelector<HTMLElement>(selector);
@@ -79,19 +69,14 @@ export default function Hero() {
 
       engine = new MaskReveal({
         container,
-        // Both gates read a value that GSAP scrubs inline, and both ask the
-        // same question: is any of the hero still on screen?
+        // Reads a value GSAP scrubs inline, and asks one question: is any of
+        // the hero still on screen?
         isActive: () => {
           // The about section opens over the hero. Its image only takes the
           // left half, so the blackout behind it is what says the hero is
           // covered — at full opacity there is nothing left underneath to stir.
           const about = inlineOpacity(".about-backdrop");
-          if (about !== null && about >= 0.99) return false;
-
-          // And the showreel's media shrinks away as it scrolls up over what
-          // is left, which is the older half of the same handoff.
-          const reel = inlineWidth(".section.showreel .video-showreel-full-w");
-          return reel === null || reel >= 99;
+          return about === null || about < 0.99;
         },
       });
 

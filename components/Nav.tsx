@@ -3,15 +3,6 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import NavWordmark from "./NavWordmark";
-
-/** Letter geometry, matched to the clip windows in NavWordmark. */
-const LETTERS = ["nav-o", "nav-t", "nav-h", "nav-i", "nav-n-last"] as const;
-
-const CLOSED_VIEWBOX_W = 338;
-const OPEN_VIEWBOX_W = 1398;
-const APOS_CLOSED_X = -1060;
-const LETTER_PARKED_Y = 320;
 
 const MENU_LINKS = [
   { label: "Work", href: "#work" },
@@ -19,194 +10,84 @@ const MENU_LINKS = [
   { label: "Contact", href: "#contact" },
 ];
 
+/**
+ * Where the nav decides it is over a light background, in px from the top of
+ * the viewport. The bar is 4rem tall with 1.28rem of top padding, so this sits
+ * roughly on the mark's own centre line — the switch lands when the section
+ * edge crosses the logo, not when it crosses the top of the screen.
+ */
+const LIGHT_LINE = 40;
+
 export default function Nav() {
+  const navRef = useRef<HTMLElement>(null);
   const wrapRef = useRef<HTMLAnchorElement>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
   const menuLinksRef = useRef<HTMLDivElement>(null);
 
+  /* --- reveal past the hero, and the light/dark switch ------------------- */
+
   useEffect(() => {
+    const nav = navRef.current;
     const wrap = wrapRef.current;
-    const svg = svgRef.current;
-    if (!wrap || !svg) return;
+    if (!nav || !wrap) return;
 
     gsap.registerPlugin(ScrollTrigger);
 
-    const apos = svg.querySelector<SVGPathElement>(".nav-apos");
-    const letters = LETTERS.map((c) => svg.querySelector<SVGPathElement>(`.${c}`));
-
-    // Animated state, written back to attributes on every tick.
-    const box = { w: CLOSED_VIEWBOX_W };
-    const aposPos = { x: APOS_CLOSED_X };
-
-    let phase: "idle" | "spacing-in" | "open" | "letters-in" | "letters-out" | "spacing-out" =
-      "idle";
-    let spacingTl: gsap.core.Timeline | null = null;
-    let lettersTl: gsap.core.Timeline | null = null;
-
     const ctx = gsap.context(() => {
-      gsap.set(svg, { attr: { viewBox: `0 0 ${CLOSED_VIEWBOX_W} 291` } });
-      gsap.set(apos, { attr: { transform: `translate(${APOS_CLOSED_X}, 0)` } });
-      letters.forEach((l) => {
-        if (l) gsap.set(l, { attr: { transform: `translate(0, ${LETTER_PARKED_Y})` } });
-      });
-
-      const shuffle = (arr: number[]) => {
-        const out = arr.slice();
-        for (let i = out.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [out[i], out[j]] = [out[j], out[i]];
-        }
-        return out;
-      };
-
-      const sync = () => {
-        svg.setAttribute("viewBox", `0 0 ${box.w.toFixed(1)} 291`);
-        apos?.setAttribute("transform", `translate(${aposPos.x.toFixed(1)}, 0)`);
-      };
-
-      /** Widen the viewBox, then float the letters up. */
-      const spacingIn = () => {
-        phase = "spacing-in";
-        const order = shuffle([0, 1, 2, 3, 4]);
-        spacingTl = gsap.timeline({
-          onUpdate: sync,
-          onComplete: () => {
-            phase = "open";
-          },
-        });
-        spacingTl.to(box, { w: OPEN_VIEWBOX_W, duration: 0.7, ease: "power4.inOut" }, 0);
-        spacingTl.to(aposPos, { x: 0, duration: 0.7, ease: "power4.inOut" }, 0);
-        order.forEach((letterIdx, i) => {
-          const el = letters[letterIdx];
-          if (el) {
-            spacingTl!.to(
-              el,
-              { attr: { transform: "translate(0, 0)" }, duration: 0.6, ease: "power4.inOut" },
-              0.35 + i * 0.06
-            );
-          }
-        });
-      };
-
-      /** Re-entering while the letters are still leaving: bring them back. */
-      const lettersIn = () => {
-        phase = "letters-in";
-        const order = shuffle([0, 1, 2, 3, 4]);
-        lettersTl = gsap.timeline({
-          onUpdate: sync,
-          onComplete: () => {
-            phase = "open";
-          },
-        });
-        lettersTl.to(box, { w: OPEN_VIEWBOX_W, duration: 0.6, ease: "power4.inOut" }, 0);
-        lettersTl.to(aposPos, { x: 0, duration: 0.6, ease: "power4.inOut" }, 0);
-        order.forEach((letterIdx, i) => {
-          const el = letters[letterIdx];
-          if (el) {
-            lettersTl!.to(
-              el,
-              { attr: { transform: "translate(0, 0)" }, duration: 0.6, ease: "power4.inOut" },
-              i * 0.06
-            );
-          }
-        });
-      };
-
-      /** Drop the letters, then close the viewBox back down. */
-      const lettersOut = () => {
-        phase = "letters-out";
-        const order = shuffle([0, 1, 2, 3, 4]);
-        lettersTl = gsap.timeline({ onComplete: spacingOut });
-        order.forEach((letterIdx, i) => {
-          const el = letters[letterIdx];
-          if (el) {
-            lettersTl!.to(
-              el,
-              {
-                attr: { transform: `translate(0, ${LETTER_PARKED_Y})` },
-                duration: 0.6,
-                ease: "power4.inOut",
-              },
-              i * 0.08
-            );
-          }
-        });
-      };
-
-      const spacingOut = () => {
-        phase = "spacing-out";
-        spacingTl = gsap.timeline({
-          onUpdate: sync,
-          onComplete: () => {
-            phase = "idle";
-          },
-        });
-        spacingTl.to(box, { w: CLOSED_VIEWBOX_W, duration: 0.7, ease: "power4.inOut" }, 0);
-        spacingTl.to(aposPos, { x: APOS_CLOSED_X, duration: 0.7, ease: "power4.inOut" }, 0);
-      };
-
-      const killTimelines = () => {
-        spacingTl?.kill();
-        lettersTl?.kill();
-      };
-
-      const onEnter = () => {
-        killTimelines();
-        if (phase === "idle" || phase === "spacing-out") spacingIn();
-        else if (phase === "letters-out") lettersIn();
-      };
-
-      const onLeave = () => {
-        killTimelines();
-        if (phase === "open" || phase === "letters-in" || phase === "spacing-in") lettersOut();
-      };
-
-      const isDesktop = !window.matchMedia("(max-width: 991px)").matches;
-      if (isDesktop) {
-        wrap.addEventListener("mouseenter", onEnter);
-        wrap.addEventListener("mouseleave", onLeave);
-      }
-
-      /* --- show the nav only once the hero has scrolled past ------------- */
-      const hasHero = !!document.querySelector(".nothin-hero-w");
-      if (hasHero) {
-        gsap.set(wrap, { autoAlpha: 0 });
-        let visible = false;
-        const setVisible = (next: boolean) => {
-          if (next === visible) return;
-          visible = next;
-          gsap.to(wrap, {
-            autoAlpha: next ? 1 : 0,
-            duration: next ? 0.4 : 0.3,
-            ease: next ? "power2.out" : "power2.in",
-          });
-        };
-        const update = () => {
-          const y = window.scrollY || window.pageYOffset || 0;
-          setVisible(y >= window.innerHeight * 0.1);
-        };
+      /*
+       * The nav is white on black for most of the page and inverts over the one
+       * white section. This used to be `mix-blend-mode: difference` on the bar,
+       * which cannot work now that the mark is a raster image: a black PNG
+       * differenced against white comes back white. So the swap is explicit —
+       * a class on the bar switches `color` for the menu and crossfades the two
+       * logo files, and the CSS does the actual work.
+       */
+      const light = document.querySelector<HTMLElement>(".section.tech");
+      if (light) {
         ScrollTrigger.create({
-          start: () => window.innerHeight * 0.1,
-          end: () => ScrollTrigger.maxScroll(window) + window.innerHeight,
-          onToggle: update,
-          onRefresh: update,
+          trigger: light,
+          start: () => `top ${LIGHT_LINE}px`,
+          end: () => `bottom ${LIGHT_LINE}px`,
+          onToggle: (self) => nav.classList.toggle("is-over-light", self.isActive),
+          onRefresh: (self) => nav.classList.toggle("is-over-light", self.isActive),
         });
-        update();
-      } else {
-        gsap.set(wrap, { autoAlpha: 1 });
       }
 
-      return () => {
-        wrap.removeEventListener("mouseenter", onEnter);
-        wrap.removeEventListener("mouseleave", onLeave);
-        killTimelines();
+      /* --- show the logo only once the hero has scrolled past ------------- */
+      const hasHero = !!document.querySelector(".nothin-hero-w");
+      if (!hasHero) {
+        gsap.set(wrap, { autoAlpha: 1 });
+        return;
+      }
+
+      gsap.set(wrap, { autoAlpha: 0 });
+      let visible = false;
+      const setVisible = (next: boolean) => {
+        if (next === visible) return;
+        visible = next;
+        gsap.to(wrap, {
+          autoAlpha: next ? 1 : 0,
+          duration: next ? 0.4 : 0.3,
+          ease: next ? "power2.out" : "power2.in",
+        });
       };
-    }, wrap);
+      const update = () => {
+        const y = window.scrollY || window.pageYOffset || 0;
+        setVisible(y >= window.innerHeight * 0.1);
+      };
+      ScrollTrigger.create({
+        start: () => window.innerHeight * 0.1,
+        end: () => ScrollTrigger.maxScroll(window) + window.innerHeight,
+        onToggle: update,
+        onRefresh: update,
+      });
+      update();
+    }, nav);
 
     return () => ctx.revert();
   }, []);
 
   /* --- menu hover ------------------------------------------------------- */
+
   useEffect(() => {
     const links = menuLinksRef.current;
     if (!links) return;
@@ -242,9 +123,21 @@ export default function Nav() {
   }, []);
 
   return (
-    <nav className="nav-boiler">
+    <nav className="nav-boiler" ref={navRef}>
+      {/*
+        Both files are always in the DOM and stacked; the crossfade is opacity
+        only, so neither has to decode at the moment the section edge crosses
+        the bar. The dark one is decorative — the light one carries the label.
+      */}
       <a href="/" className="nav-logo-wrap" ref={wrapRef} aria-label="Nothin’ — home">
-        <NavWordmark ref={svgRef} />
+        <img src="/logo-white.png" alt="Nothin’" className="nav-logo nav-logo--light" draggable="false" />
+        <img
+          src="/logo-black.png"
+          alt=""
+          aria-hidden="true"
+          className="nav-logo nav-logo--dark"
+          draggable="false"
+        />
       </a>
 
       <div className="menu-w">

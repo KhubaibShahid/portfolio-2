@@ -17,13 +17,29 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
   useEffect(() => {
     gsap.registerPlugin(ScrollTrigger);
 
+    /*
+     * The page's weight, and the single biggest thing deciding how it feels.
+     *
+     * Two numbers do the work and they are doing different jobs. `duration` is
+     * how long the page keeps gliding after the wheel stops — long, so a flick
+     * carries and coasts to a halt instead of arriving with the input.
+     * `wheelMultiplier` is how much distance one notch of the wheel buys, and
+     * it is *under* one on purpose: every scroll-driven sequence on this page —
+     * the hero opening into the about tile, the stack morphing through six
+     * marks — is meant to be watched rather than passed, and at the browser's
+     * default a single flick crossed most of one.
+     *
+     * Touch is left near unity. A thumb expects the page to track it, and the
+     * same discount that reads as weight on a wheel reads as a broken drag.
+     */
     const instance = new Lenis({
-      duration: 1.2,
+      duration: 1.65,
       easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       orientation: "vertical",
       gestureOrientation: "vertical",
       smoothWheel: true,
-      touchMultiplier: 2,
+      wheelMultiplier: 0.7,
+      touchMultiplier: 1.6,
     });
 
     lenisRef.current = instance;

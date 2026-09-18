@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* The showcase is someone else's theme, served as-is: nothing in it is
+   Tailwind, and scanning 700 KB of its markup and CSS for class names would
+   only generate utilities nobody asked for. */
+@source not "../public/showcase";
+@source not "../components/portfolio-showcase";
+@source not "../portfolio-showcase";
+
 /* -------------------------------------------------------------------------- */
 /*  Design tokens (exposed to Tailwind as utilities: bg-white, text-black, …)  */
 /* -------------------------------------------------------------------------- */
@@ -31,6 +38,9 @@
   --about-tile-gap: 1.25rem;
   /* Clears the hero's bottom row — `Creative studio in Paris` and the socials. */
   --about-tile-lift: 3.5rem;
+  /* Only the parked tile is rounded; About.tsx scrubs it square as it opens
+     flush to the screen edges. */
+  --about-tile-radius: 0.5rem;
 
   /*
    * Where the tile lands once it has opened: flush to the left half of the
@@ -43,6 +53,32 @@
    */
   --about-open-w: 50%;
   --about-open-right: 50%;
+
+  /*
+   * Viewports of scroll the tile takes to open.
+   *
+   * One was a flick of the wheel — the hero was gone before it had been looked
+   * at, and two still read as a transition rather than as a scene.
+   *
+   * Everything downstream is solved from this number rather than restated,
+   * because the hero has to stay pinned for exactly as long as the image is
+   * still opening over it: the hero's runway, this section's own stage, and the
+   * blackout that catches the gap below it. About.tsx reads it as the end of
+   * the scrub.
+   */
+  --about-open-vh: 3;
+
+  /* The navbar's tab: 3.25rem pills with 0.75rem of black above and below. */
+  --nav-tab-h: 4.75rem;
+
+  /* How far the hero copy has to drop to clear the navbar above it: the tab,
+     and air. Only the hero needs it — the bar scrolls away with the page. */
+  --site-nav-clear: 5.75rem;
+
+  /* The visor amber off the hero banner — the one warm colour on the site. The
+     loader, the navbar and the stack sidebar spend it on the same few things:
+     a status dot, a progress fill, "you are here". */
+  --site-accent: #ffb21e;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -86,10 +122,24 @@
 /*  Base                                                                       */
 /* -------------------------------------------------------------------------- */
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/*
+ * In the base layer, not bare. Un-layered CSS outranks every Tailwind layer
+ * whatever the specificity, so a bare `*` reset silently cancelled every
+ * padding and margin utility in the markup. Preflight resets the same things
+ * already; these stay only as the statement of intent.
+ */
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  /* Same reason: bare, this beat every `text-*` utility on a link. */
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
 html {
@@ -108,10 +158,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
 
 .sr-only {
   position: absolute;
@@ -160,13 +206,13 @@ img {
 /* -------------------------------------------------------------------------- */
 
 /*
- * The runway the hero holds still over: its own 300vh of stage, plus the 100vh
- * of scroll the about tile takes to open. That overshoot is the whole pin —
- * see `.section-w` for how it cashes out.
+ * The runway the hero holds still over: its own 300vh of stage, plus however
+ * many viewports the about tile takes to open. That overshoot is the whole pin
+ * — see `.section-w` for how it cashes out.
  */
 .hero-pin-w {
   position: relative;
-  height: 400vh;
+  height: calc((3 + var(--about-open-vh)) * 100vh);
   margin-top: -100vh;
 }
 
@@ -212,7 +258,8 @@ img {
  * The layer the liquid dissolves the hero away to reveal.
  *
  * Only the centred 100vh band of the 300vh stage is ever on screen — the top
- * third is pulled above the fold and the showreel covers the bottom — so the
+ * third is pulled above the fold and the technology section covers the bottom,
+ * so the
  * image is sized to that band rather than to the whole stage. Covering 300vh
  * would crop a 16:9 photo down to a narrow vertical sliver.
  */
@@ -342,7 +389,8 @@ img {
   justify-content: space-between;
   align-items: flex-start;
   margin-top: 100vh;
-  padding: 1rem 1.25rem;
+  /* The top clears the fixed navbar. */
+  padding: var(--site-nav-clear) 1.25rem 1rem;
   display: flex;
   position: absolute;
   inset: 0% 0% auto;
@@ -651,16 +699,75 @@ img {
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Navbar tab — the black corner the links sit in (Navbar.tsx)                */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * A tab cut into the top-right corner of the page rather than a bar laid over
+ * it. Its own bottom-left corner is rounded, and the two pseudo-elements are
+ * the inverted corners where it meets the page: one on the top edge to its
+ * left, one on the right edge below it. Each is a square of black with a
+ * quarter circle taken out of the corner facing away from the tab, so the page
+ * appears to round off into the cut rather than stop at it.
+ *
+ * Everything else about the navbar is Tailwind in the component.
+ */
+.nav-tab {
+  --nav-tab-r: 1.75rem;
+
+  border-bottom-left-radius: var(--nav-tab-r);
+}
+
+.nav-tab::before,
+.nav-tab::after {
+  content: "";
+  pointer-events: none;
+  width: var(--nav-tab-r);
+  height: var(--nav-tab-r);
+  /* Half a pixel of ramp, so the curve antialiases instead of stair-stepping. */
+  background-image: radial-gradient(
+    circle at 0 100%,
+    rgba(0, 0, 0, 0) calc(var(--nav-tab-r) - 0.5px),
+    var(--color-black) var(--nav-tab-r)
+  );
+  position: absolute;
+}
+
+.nav-tab::before {
+  top: 0;
+  right: 100%;
+}
+
+.nav-tab::after {
+  top: 100%;
+  right: 0;
+}
+
+@media (max-width: 991px) {
+  .nav-tab {
+    --nav-tab-r: 1.375rem;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Nav                                                                        */
 /* -------------------------------------------------------------------------- */
 
+/*
+ * The bar is white on black for the whole page except the one white section,
+ * where `.is-over-light` inverts it. That used to be `mix-blend-mode:
+ * difference`, which inverted the wordmark against whatever was behind it for
+ * free. It cannot survive the switch to a raster mark — differencing the black
+ * PNG against white returns white — so the inversion is now explicit: `color`
+ * for the menu, an opacity crossfade for the two logo files. `Nav.tsx` puts the
+ * class on when the white section crosses the mark's centre line.
+ */
 .nav-boiler {
   z-index: 1001;
   pointer-events: none;
   width: 100vw;
   height: 4rem;
   color: var(--color-white);
-  mix-blend-mode: difference;
   justify-content: space-between;
   align-items: center;
   padding: 1.28125rem 1.25rem 0;
@@ -668,16 +775,44 @@ img {
   position: fixed;
   top: 0;
   left: 0;
+  transition: color 0.35s ease;
 }
 
+.nav-boiler.is-over-light {
+  color: var(--color-black);
+}
+
+/* Both marks occupy the same box, so the crossfade cannot shift the layout. */
 .nav-logo-wrap {
   pointer-events: auto;
-  min-width: 6.2rem;
+  display: grid;
 }
 
 .nav-logo {
-  height: 1.25rem;
-  overflow: visible;
+  grid-area: 1 / 1;
+  width: auto;
+  height: 1.75rem;
+  transition: opacity 0.35s ease;
+}
+
+.nav-logo--dark {
+  opacity: 0;
+}
+
+.nav-boiler.is-over-light .nav-logo--light {
+  opacity: 0;
+}
+
+.nav-boiler.is-over-light .nav-logo--dark {
+  opacity: 1;
+}
+
+/* The switch is a state change, not an animation anyone asked to watch. */
+@media (prefers-reduced-motion: reduce) {
+  .nav-boiler,
+  .nav-logo {
+    transition: none;
+  }
 }
 
 .menu-w {
@@ -718,64 +853,300 @@ img {
 /*  Loader                                                                     */
 /* -------------------------------------------------------------------------- */
 
+/*
+ * One step above the nav rather than level with it: the bar also sits at 1001
+ * and comes later in the DOM, so at a tie its menu paints over this corner.
+ *
+ * The root is transparent. The black is the slats, so the curtain can split
+ * along them on the way out; the hero is what shows through the gaps.
+ */
 .loader {
-  z-index: 1001;
-  background-color: var(--color-black);
-  width: 100%;
-  height: 100vh;
+  /* The visor glow off the hero banner — the one warm thing on a black page,
+     so it is spent in three places only: the status dot, the unit, the rule. */
+  --loader-accent: #ffb21e;
+  --loader-ink-soft: rgba(255, 255, 255, 0.46);
+  --loader-line: rgba(255, 255, 255, 0.12);
+
+  z-index: 1002;
+  color: var(--color-white);
   position: fixed;
-  inset: 0%;
+  inset: 0;
   overflow: hidden;
 }
 
-.loader-c {
-  width: 100%;
-  height: 100%;
-  color: var(--color-white);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+.loader-slats {
+  position: absolute;
+  inset: 0;
+}
+
+/*
+ * Positioned by Loader.tsx, each 2px wider than its share, so the neighbours
+ * overlap. Butted edge to edge at fractional widths, the page would show
+ * through the seams as hairlines.
+ */
+.loader-slat {
+  background-color: var(--color-black);
+  transform-origin: 50% 0%;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  will-change: transform;
+}
+
+/* The seams the slats will part along, faded out toward both edges. */
+.loader-grid {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+}
+
+.loader-grid span {
+  width: 1px;
+  background-image: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0) 0%,
+    var(--loader-line) 22%,
+    var(--loader-line) 78%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+/* Revealed by Loader.tsx once its children are parked below their masks. */
+.loader-ui {
+  opacity: 0;
   flex-flow: column;
   justify-content: space-between;
+  padding: 1.25rem;
+  display: flex;
+  position: absolute;
+  inset: 0;
+}
+
+.loader-row {
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: flex-end;
+  display: flex;
+}
+
+/* The same trick as `.line-mask-child-mask`, sized to whatever it holds. */
+.loader-mask {
+  overflow: clip;
+  display: inline-flex;
+}
+
+.loader-mask > * {
+  will-change: transform;
+}
+
+/* Same readout voice as the tech section's eyebrows. */
+.loader-eyebrow {
+  font-family: var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--loader-ink-soft);
+  padding: 0.15em 0;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1;
+  display: block;
+}
+
+.loader-center {
+  gap: 1.75rem;
+  flex-flow: column;
   align-items: center;
-  padding: 1.875rem;
-  font-size: 1rem;
+  text-align: center;
+  display: flex;
+}
+
+/* Tracked as tight as the tech section's intro — the two biggest settings of
+   type on the site should read as the same hand. */
+.loader-name {
+  flex-flow: column;
+  align-items: center;
+  letter-spacing: -0.045em;
+  text-transform: uppercase;
+  font-size: clamp(3.5rem, 14vw, 15rem);
+  font-weight: 700;
+  line-height: 0.84;
+  display: flex;
+}
+
+.loader-name__line {
+  overflow: clip;
+  padding: 0.04em 0.06em;
+  display: flex;
+}
+
+.loader-char {
+  position: relative;
+  display: block;
+  will-change: transform;
+}
+
+/*
+ * The scrambled glyph rides on top of a hidden copy of the real letter, so the
+ * line holds its finished width however wide the noise runs — the same split
+ * `.btn-label` uses.
+ */
+.loader-char__size {
+  visibility: hidden;
+}
+
+.loader-char__glyph {
+  justify-content: center;
+  display: flex;
+  position: absolute;
+  inset: 0;
+  transition: color 0.3s ease;
+}
+
+.loader-char__glyph.is-noise {
+  color: var(--loader-ink-soft);
+}
+
+.loader-tagline {
+  text-wrap: balance;
+}
+
+.loader-foot {
+  gap: 1rem;
+  flex-flow: column;
+  display: flex;
+}
+
+.loader-status {
+  gap: 0.625rem;
+  align-items: center;
+  padding-bottom: 0.35rem;
+  display: flex;
+}
+
+.loader-status__dot {
+  flex: none;
+  width: 0.375rem;
+  height: 0.375rem;
+  background-color: var(--loader-accent);
+  box-shadow: 0 0 0.75rem var(--loader-accent);
+  animation: loader-blink 1.1s steps(1, end) infinite;
+}
+
+.loader-status__text {
+  color: var(--color-white);
+}
+
+@keyframes loader-blink {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+/*
+ * Each digit is a clipped window over a strip of eleven — 0 to 9, then 0 again
+ * — so a column can roll forward from 9 into the trailing zero. Loader.tsx
+ * moves the strips. Fixed-width windows keep a narrow 1 from pulling the
+ * number in as it passes.
+ */
+.loader-count {
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  align-items: flex-start;
+  font-size: clamp(3rem, 9vw, 8.5rem);
   font-weight: 700;
   line-height: 1;
   display: flex;
 }
 
-.loader-anim {
-  justify-content: center;
-  align-items: flex-start;
-  height: 7.6rem;
-  display: flex;
+.loader-digit {
+  width: 0.66em;
+  height: 1em;
+  overflow: clip;
+  display: block;
 }
 
-.loader-nbr-w {
-  z-index: 99;
+.loader-digit__strip {
+  flex-flow: column;
+  display: flex;
+  will-change: transform;
+}
+
+.loader-digit__strip span {
+  text-align: center;
+  height: 1em;
+  display: block;
+}
+
+.loader-count__unit {
+  font-family: var(--font-mono);
+  letter-spacing: 0;
+  color: var(--loader-accent);
+  margin: 0.2em 0 0 0.25em;
+  font-size: 0.24em;
+  font-weight: 500;
+}
+
+/* Graduated like `.tech-progress`, and filled by the real load. */
+.loader-rule {
+  height: 1px;
+  background-color: var(--loader-line);
   position: relative;
 }
 
-.loader-img-w {
-  pointer-events: none;
-  justify-content: center;
-  align-items: center;
-  width: 1rem;
-  height: 20rem;
-  margin-top: -25%;
-  display: flex;
-  position: relative;
+.loader-rule::before {
+  content: "";
+  height: 0.25rem;
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--loader-line) 0 1px,
+    transparent 1px 5%
+  );
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
 
-.n-load {
-  opacity: 0;
-  width: 6.25rem;
-  margin-right: -0.3125rem;
+.loader-rule__fill {
+  background-color: var(--loader-accent);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  position: absolute;
+  inset: 0;
+  display: block;
 }
 
-.apos-load {
-  width: 2.5625rem;
-  transform: scale(0);
+@media (max-width: 991px) {
+  .loader-ui {
+    padding: 1rem;
+  }
+
+  .loader-center {
+    gap: 1.25rem;
+  }
+
+  /* Solved for the longer line, `Khubaib`, to span the width inside the gutter. */
+  .loader-name {
+    font-size: 18.5vw;
+  }
+
+  .loader-tagline {
+    max-width: 16rem;
+    line-height: 1.5;
+  }
+
+  .loader-count {
+    font-size: clamp(2.75rem, 16vw, 4.5rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loader-status__dot {
+    animation: none;
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -783,16 +1154,33 @@ img {
 /* -------------------------------------------------------------------------- */
 
 /*
- * Stacked on top of the hero rather than after it. `.hero-pin-w` ends at 300vh,
- * so pulling this back by exactly that starts it at scroll 0 with the tile
- * already in the hero's corner. Of its 300vh the sticky stage holds the first
- * 200vh — one viewport to open the image, one to hold it full screen — and the
- * showreel's own -100vh then lands on the unstick, covering this as it goes.
+ * Stacked on top of the hero rather than after it. Pulling this back by exactly
+ * where `.hero-pin-w` ends starts it at scroll 0 with the tile already in the
+ * hero's corner — which is why both are written as the same expression.
+ *
+ * Of its height the sticky stage holds all but the last viewport: `--about-
+ * open-vh` to open the image, then one more to hold it full screen. The
+ * technology section's own -100vh then lands on the unstick, covering this as
+ * it goes.
  */
+/*
+ * The section's own top is the hero's top — it is stacked over it — so `#about`
+ * cannot point there. This marks where the image has finished opening and the
+ * copy is fully in, which is where the navbar and the hero's button should land.
+ */
+.about-anchor {
+  pointer-events: none;
+  width: 1px;
+  height: 1px;
+  position: absolute;
+  top: calc(var(--about-open-vh) * 100vh);
+  left: 0;
+}
+
 .section.about {
   position: relative;
-  height: 300vh;
-  margin-top: -300vh;
+  height: calc((2 + var(--about-open-vh)) * 100vh);
+  margin-top: calc((2 + var(--about-open-vh)) * -100vh);
   /* This box lies over the hero's social links for the whole time the tile is
      still small. Nothing in here is interactive, and the fluid reads the
      pointer off `window`, so the events are better off passing straight down. */
@@ -805,14 +1193,14 @@ img {
  * image is normally full screen by then and covering it — but `scrub` lags the
  * scroll and a fast flick gets there first, so this catches the white.
  *
- * 200vh, not 100vh: while the hero is pinned it fills the viewport from a
- * document position that keeps sliding, and a rect anchored any higher than the
- * stage's own end would cut into it.
+ * Anchored to the hero stage's own end rather than to the fold: while the hero
+ * is pinned it fills the viewport from a document position that keeps sliding,
+ * and a rect any higher than that would cut into it.
  */
 .section.about::before {
   content: "";
   position: absolute;
-  inset: 200vh 0 0;
+  inset: calc((1 + var(--about-open-vh)) * 100vh) 0 0;
   z-index: 2;
   background-color: var(--color-black);
 }
@@ -853,6 +1241,7 @@ img {
   bottom: var(--about-tile-lift);
   width: var(--about-tile-w);
   height: var(--about-tile-h);
+  border-radius: var(--about-tile-radius);
   overflow: hidden;
 }
 
@@ -928,27 +1317,1377 @@ img {
   opacity: 0.7;
 }
 
+/*
+ * The socials, as a row of outlined buttons under the copy.
+ *
+ * The hero already carries two of these as plain text links, and that is the
+ * right shape for them there — a line of small caps along the bottom of a
+ * banner. Here they are the end of a paragraph of prose, so they are targets
+ * rather than words: a fixed circle each, spaced on their own rhythm.
+ *
+ * Two elements, not one, and the split matters. The `li` is what About.tsx
+ * scrubs in, and GSAP writes that as an inline `transform`; the hover lift is a
+ * `transform` too, and an inline one outranks the stylesheet. Keeping the two
+ * on separate elements is what stops the reveal from eating the hover.
+ */
+.about-socials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  margin-top: 2.25rem;
+  padding: 0;
+  list-style: none;
+}
+
+.about-social {
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  color: var(--color-white);
+  place-items: center;
+  display: grid;
+  transition:
+    color 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.about-social svg {
+  width: 1.0625rem;
+  height: 1.0625rem;
+  display: block;
+}
+
+.about-social:hover {
+  background-color: var(--color-white);
+  border-color: var(--color-white);
+  color: var(--color-black);
+  transform: translateY(-2px);
+}
+
+.about-social:focus-visible {
+  outline: 2px solid var(--color-white);
+  outline-offset: 3px;
+}
+
 /* -------------------------------------------------------------------------- */
-/*  Showreel — pulled up over the hero; its scale gates the fluid sim          */
+/*  Technology — a particle field projected from a lit platform                */
 /* -------------------------------------------------------------------------- */
 
-.section.showreel {
+/*
+ * The one lit room in a black building.
+ *
+ * Everything either side of this — hero above, projects below — is white on
+ * black, and this section inverts it: a clean white laboratory with the stack
+ * suspended over an emitter in the middle of it. The switch is the point, and
+ * it is made as a hard cut at both edges — no ramp either way.
+ *
+ * The tokens are scoped to the section rather than promoted to `:root`, because
+ * nothing else on the page is lit this way and a global cyan would be an
+ * invitation to use it somewhere it does not belong.
+ */
+.section.tech {
+  /*
+   * Inherited from the section that used to sit here: `.section.about` is a
+   * 300vh stage whose sticky part holds the first 200vh, and something has to
+   * land on the unstick and cover it as it scrolls away. This section is now
+   * that something: its own white ground, raised on `z-index`, is what covers
+   * the stage. The mobile layout unsticks the about stage entirely.
+   */
   margin-top: -100vh;
+
+  --tech-ink: #0b1a24;
+  --tech-ink-soft: #5f7382;
+  --tech-line: rgba(11, 26, 36, 0.14);
+  --tech-line-faint: rgba(11, 26, 36, 0.055);
+  --tech-accent: #17a4c4;
+
   position: relative;
+  /*
+   * Above the about stage, which it has to cover as it scrolls up, and above
+   * `.section.projects` below it; 4 beats 3 in both directions.
+   */
+  z-index: 4;
+  background-color: var(--color-white);
+  color: var(--tech-ink);
+}
+
+/*
+ * The scroll the section is spread over — the intro act first, then the morph.
+ *
+ * The first `INTRO_VH` viewports (TechStack.tsx) are the arrival: an empty
+ * stage, the title filling the screen and leaving again, and the field being
+ * pulled in from outside the frame. The remainder is the morph itself. Seven
+ * logos is six transitions plus the holds between them, and `timeline.ts`
+ * spends two thirds of what is left on the transitions — so this works out at
+ * a shade under two viewports of wheel per transformation. That is slow, on
+ * purpose: the section exists to be watched, and at half a viewport the
+ * particles crossed the frame faster than the eye could follow one of them.
+ *
+ * This is the one number to change if the sequence should feel faster or
+ * slower; the intro takes its fixed viewports off the top and everything else
+ * divides what is left. It is also the number that has to move when a logo is
+ * added or dropped — the pacing above is per *transition*, so a seventh mark
+ * that does not lengthen the runway just makes all six transitions quicker.
+ */
+.tech-runway {
+  position: relative;
+  height: 1750vh;
+}
+
+/*
+ * The pin. Everything inside holds still while the runway scrolls past it, so
+ * the field reads as one object being reshaped rather than as six things going
+ * by. Sticky rather than a GSAP pin: nothing here needs the scroll position
+ * rewritten, only reported.
+ */
+.tech-stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/*
+ * The room the instrument is standing in.
+ *
+ * A survey grid, masked to an ellipse so it never reaches an edge and turns
+ * into wallpaper — it should read as the floor of something, felt more than
+ * looked at. The canvas is a later sibling and paints over it, and the canvas
+ * is transparent, so this is genuinely behind the scene rather than composited
+ * into it.
+ */
+.tech-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(to right, var(--tech-line-faint) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--tech-line-faint) 1px, transparent 1px);
+  background-size: 5rem 5rem;
+  background-position: center;
+  -webkit-mask-image: radial-gradient(ellipse 76% 66% at 50% 46%, #000 22%, transparent 76%);
+  mask-image: radial-gradient(ellipse 76% 66% at 50% 46%, #000 22%, transparent 76%);
+  pointer-events: none;
+}
+
+/* Sized here, not by the renderer — it is told not to write inline dimensions
+   so CSS stays the only thing deciding how big the canvas is. */
+.tech-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.tech-canvas-w {
+  position: absolute;
+  inset: 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  The intro title — the stage's first act                                    */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * The section arrives empty, on purpose.
+ *
+ * The white ground slides up over the about stage carrying nothing at all, and
+ * only once it has come to rest does this fade up, hold, and fade away again —
+ * set large enough to *be* the screen rather than to be a heading sitting on
+ * one. The particles are still outside the frame for the whole of it, so there
+ * is a beat with the title alone and a beat with neither.
+ *
+ * It used to be a line of type in the flow above the runway that simply slid
+ * past. TechStack.tsx now drives the three beats off the first couple of
+ * viewports of the runway; everything here is the rest state they are written
+ * over, which is why it starts invisible.
+ */
+.tech-intro {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  flex-flow: column;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  padding: 0 1.25rem;
+  text-align: center;
+  letter-spacing: -0.045em;
+  font-size: clamp(2.5rem, 10.5vw, 11rem);
+  font-weight: 700;
+  line-height: 0.92;
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity, transform;
+}
+
+.tech-intro span {
+  display: block;
+}
+
+/*
+ * The rest state for a stage nothing will ever drive.
+ *
+ * On a machine without WebGL there is no frame loop to write an opacity onto
+ * this, and a heading that defaults to invisible would simply never be seen.
+ */
+.tech-intro--held {
+  opacity: 1;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  The name, set into the top left corner                                     */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * What used to be a glass panel in this corner is now one word, on the same
+ * diagonal as the proficiency readout opposite it.
+ *
+ * It lies behind the canvas rather than on top of it — the canvas is a later
+ * sibling and transparent — so the mark is read against its own name instead of
+ * against captions pointing at it. Each entry carries the technology's brand
+ * colour and fades out downward, which is what keeps it a wall and not a
+ * headline: a light top edge, a bottom that dissolves into the page, and the
+ * particles always with clean ground to stand on.
+ *
+ * Every entry is stacked in one grid cell and none of them ever mounts or
+ * unmounts. The engine writes opacity and offset onto them each frame, which is
+ * what makes the crossfade survive a change of scroll direction — there is no
+ * tween holding state, only a value read off the scroll position.
+ */
+.tech-word-w {
+  /*
+   * The share of the viewport width every name spans, whatever its length.
+   * TechStack.tsx reads this and solves each font size for it — see `fitWords`
+   * there for why it is measured rather than guessed from a character count.
+   */
+  --tech-word-fill: 0.5;
+
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  /* Top left, clear of `.nav-boiler` — which is fixed across the top 4rem. */
+  place-items: start start;
+  padding: 4.5rem 1.25rem 0;
+  display: grid;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.tech-word {
+  grid-area: 1 / 1;
+  /*
+   * A starting size only. It is overwritten with a measured one the moment the
+   * display face has loaded, and every name is opacity 0 until the intro hands
+   * over, so this is never a size anyone sees — it is here so the element has
+   * something sane to lay out at before the first measurement lands.
+   */
+  font-size: clamp(2.5rem, 9vw, 12rem);
+  letter-spacing: -0.05em;
+  font-weight: 700;
+  /*
+   * 1, not the tighter figure the rest of the site sets display type at. The
+   * box is top-aligned against a padding edge, and a line box shorter than its
+   * own glyphs would put the ascenders above that edge — straight into the
+   * wrapper's `overflow: hidden`.
+   */
+  line-height: 1;
+  text-align: left;
+  white-space: nowrap;
+  color: var(--tech-word-color);
+  opacity: 0;
+  will-change: opacity, transform;
+}
+
+/*
+ * The gradient is the whole effect, and `background-clip: text` is the only way
+ * to get it — so the plain colour above is the rest state for anything that
+ * cannot do this, rather than a transparent word that would vanish entirely.
+ *
+ * Nothing here reaches full strength. At this size a brand colour at full alpha
+ * stops being the room the mark is standing in and starts being a headline the
+ * mark is standing on, so the top edge opens at a little over half and the
+ * whole thing is gone well before the baseline.
+ */
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+  .tech-word {
+    background-image: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--tech-word-color), transparent 42%) 0%,
+      color-mix(in srgb, var(--tech-word-color), transparent 62%) 46%,
+      color-mix(in srgb, var(--tech-word-color), transparent 100%) 94%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  The sidebar — the navbar's tab, cut into the stage's right edge            */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * The other half of the reading, opposite the name: which mark this is, the
+ * whole stack as a list to jump through, and how well the one on screen is
+ * known.
+ *
+ * It is the navbar's tab turned on its side — the same black cut into the edge
+ * of the page, the same inverted corners where it meets that edge, the same
+ * dark pills inside, and the same grey pill with the amber dot for "you are
+ * here". Only here the grey pill is driven by the morph rather than by a click:
+ * TechStack.tsx moves it down the list as each mark becomes the next.
+ *
+ * The pills hold still and only their contents change: the counter, the level
+ * and the note are each a deck of pages stacked in one grid cell, written by
+ * the frame loop, never mounted or unmounted.
+ */
+.tech-side {
+  --tech-side-r: 1.75rem;
+  /* 0 parked outside the edge, 1 all the way in — written by the frame loop. */
+  --tech-side-in: 0;
+  --tech-side-pill: #161616;
+  --tech-side-lit: #3a3a3a;
+  /* Rows in the list — written from TechStack.tsx, so it follows the data. */
+  --tech-side-count: 7;
+
   z-index: 3;
+  width: 19rem;
+  /* Most of the stage. The head and the readout keep their own heights and the
+     list takes whatever is left, spread across its rows. */
+  height: 80vh;
+  gap: 0.5rem;
+  flex-flow: column;
+  padding: 0.625rem;
+  border-radius: var(--tech-side-r) 0 0 var(--tech-side-r);
   background-color: var(--color-black);
+  color: var(--color-white);
+  display: flex;
+  position: absolute;
+  top: 50%;
+  right: 0;
+  /* Past 100% so the corners, which hang above and below it, clear too. */
+  transform: translate3d(calc((1 - var(--tech-side-in)) * 115%), -50%, 0);
+  /* Taken back by the frame loop once the tab is fully in. */
+  pointer-events: none;
+  will-change: transform;
+}
+
+/*
+ * The inverted corners where the tab meets the edge — the navbar's `.nav-tab`
+ * pair, rotated a quarter turn: one square of black above the tab and one
+ * below, each with a quarter circle taken out of the corner facing away.
+ */
+.tech-side::before,
+.tech-side::after {
+  content: "";
+  pointer-events: none;
+  width: var(--tech-side-r);
+  height: var(--tech-side-r);
+  position: absolute;
+  right: 0;
+}
+
+.tech-side::before {
+  bottom: 100%;
+  background-image: radial-gradient(
+    circle at 0 0,
+    rgba(0, 0, 0, 0) calc(var(--tech-side-r) - 0.5px),
+    var(--color-black) var(--tech-side-r)
+  );
+}
+
+.tech-side::after {
+  top: 100%;
+  background-image: radial-gradient(
+    circle at 0 100%,
+    rgba(0, 0, 0, 0) calc(var(--tech-side-r) - 0.5px),
+    var(--color-black) var(--tech-side-r)
+  );
+}
+
+/* Label and counter — the navbar's CTA pill, holding its grey pill. */
+.tech-side__head {
+  flex: none;
+  height: 3.25rem;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 0.25rem 0 1.25rem;
+  border-radius: 999px;
+  background-color: var(--tech-side-pill);
+  display: flex;
+}
+
+/* The navbar's link type. */
+.tech-side__label,
+.tech-side__row {
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.tech-side__count {
+  min-width: 5rem;
+  height: 2.75rem;
+  place-items: center;
+  padding: 0 1rem;
+  border-radius: 999px;
+  background-color: var(--tech-side-lit);
+  display: grid;
+}
+
+/* Every deck in the tab: one grid cell, one page per technology, all stacked. */
+.tech-side__count > *,
+.tech-side__deck > * {
+  grid-area: 1 / 1;
+  opacity: 0;
+}
+
+.tech-side__index {
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.tech-side__index em {
+  font-style: normal;
+  opacity: 0.45;
+}
+
+/* The navbar's links pill, stood on end. */
+.tech-side__list {
+  flex: 1;
+  min-height: 0;
+  flex-flow: column;
+  padding: 0.25rem;
+  border-radius: 1.625rem;
+  background-color: var(--tech-side-pill);
+  display: flex;
+  position: relative;
+}
+
+.tech-side__list ul {
+  flex: 1;
+  flex-flow: column;
+  list-style: none;
+  display: flex;
+  position: relative;
+}
+
+/* Every row an equal share of the list, however tall the tab works out. */
+.tech-side__list li {
+  flex: 1;
+  min-height: 0;
+}
+
+/*
+ * One row tall, so the frame loop can place it with a percentage: row `n` is
+ * `translateY(n * 100%)`, and anywhere between two rows is a morph in progress.
+ * The rows stretch with the tab, so this is solved from the list's own height
+ * — less its padding — rather than stated.
+ */
+.tech-side__indicator {
+  height: calc((100% - 0.5rem) / var(--tech-side-count));
+  border-radius: 999px;
+  background-color: var(--tech-side-lit);
+  position: absolute;
+  top: 0.25rem;
+  left: 0.25rem;
+  right: 0.25rem;
+  will-change: transform;
+}
+
+.tech-side__indicator::before {
+  content: "";
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 999px;
+  background-color: #ffb21e;
+  box-shadow: 0 0 8px #ffb21e;
+  position: absolute;
+  top: 50%;
+  left: 1.125rem;
+  transform: translateY(-50%);
+}
+
+.tech-side__row {
+  width: 100%;
+  height: 100%;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 1.25rem 0 2.125rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: rgba(255, 255, 255, 0.55);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  /* Above the indicator, which is positioned and comes first. */
+  position: relative;
+  transition: color 0.3s ease;
+}
+
+.tech-side__row:hover,
+.tech-side__row.is-active {
   color: var(--color-white);
 }
 
-.container-showreel {
-  padding-bottom: 5.3125rem;
+.tech-side__row:focus-visible {
+  outline: 2px solid var(--color-white);
+  outline-offset: -2px;
+}
+
+.tech-side__num {
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  opacity: 0.4;
+  font-size: 0.6875rem;
+}
+
+.tech-side__detail {
+  flex: none;
+  gap: 1rem;
+  flex-flow: column;
+  padding: 1.125rem 1.25rem 1.25rem;
+  border-radius: 1.625rem;
+  background-color: var(--tech-side-pill);
+  display: flex;
+}
+
+.tech-side__deck {
+  display: grid;
+}
+
+.tech-side__deck--note {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 1rem;
+}
+
+.tech-side__page {
+  gap: 0.625rem;
+  flex-flow: column;
+  display: flex;
+}
+
+.tech-level {
+  letter-spacing: -0.02em;
+  font-size: clamp(1.25rem, 1.9vw, 1.75rem);
+  font-weight: 700;
+  line-height: 1;
+}
+
+/*
+ * The rung, drawn as well as named. Four segments because `LEVELS` has four
+ * entries; the component lights one per rung, so the word and the meter cannot
+ * drift apart.
+ *
+ * Lit in the technology's own colour rather than the section's cyan, which
+ * makes this and the name in the opposite corner read as one object seen from
+ * two sides. The cyan stays what it was — the chrome's colour, on the progress
+ * rule.
+ */
+.tech-meter {
+  width: 100%;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.25rem;
+  display: grid;
+}
+
+.tech-meter span {
+  height: 0.3125rem;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.16);
+}
+
+.tech-meter span.is-on {
+  background-color: var(--tech-word-color, var(--tech-accent));
+}
+
+/*
+ * The note, and the role above it.
+ *
+ * The role is the one piece of type on the tab set in the mark's own colour,
+ * mixed toward white first — several of the brand hexes in `technologies.ts`
+ * were chosen to survive a white page, and the darkest of them — the Next.js
+ * violet above all — go muddy the moment the ground under them turns black.
+ */
+.tech-side .tech-eyebrow {
+  color: rgba(255, 255, 255, 0.46);
+}
+
+.tech-side .tech-side__role {
+  color: color-mix(in srgb, var(--tech-word-color, var(--tech-accent)), #fff 30%);
+}
+
+.tech-note {
+  color: rgba(255, 255, 255, 0.62);
+  letter-spacing: -0.003em;
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+/*
+ * Monospaced, unlike the site's standing eyebrow.
+ *
+ * Everything else on the page sets small caps in the display face; this one
+ * section sets them in mono, because a readout is the one thing that reads as
+ * an instrument without having to draw one.
+ */
+.tech-eyebrow {
+  font-family: var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--tech-ink-soft);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+/* Fades out as soon as the scroll has been taken up on it. Centred along the
+   bottom, in the gap the level panel leaves to its left. */
+.tech-hint {
+  font-family: var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--tech-ink-soft);
+  opacity: 0.45;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1;
+  position: absolute;
+  bottom: 2.5rem;
+  left: 1.25rem;
+  right: 1.25rem;
+  pointer-events: none;
+}
+
+/*
+ * Hairline readout of the runway along the bottom edge, graduated like the
+ * emitter's own rim — the two are measuring the same thing.
+ */
+.tech-progress {
+  height: 1px;
+  background-color: var(--tech-line);
+  position: absolute;
+  bottom: 1.25rem;
+  left: 1.25rem;
+  right: 1.25rem;
+}
+
+.tech-progress::before {
+  content: "";
+  height: 0.25rem;
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--tech-line) 0 1px,
+    transparent 1px 5%
+  );
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+.tech-progress span {
+  width: 100%;
+  height: 100%;
+  background-color: var(--tech-accent);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  display: block;
+  will-change: transform;
+}
+
+/*
+ * Shown while the six point clouds are being sampled — a few hundred
+ * milliseconds of rasterising, which happens a viewport before the section
+ * arrives. Same voice as the site loader, scoped to this stage.
+ */
+.tech-loading {
+  gap: 1.25rem;
+  flex-flow: column;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  position: absolute;
+  inset: 0;
+}
+
+.tech-loading-bar {
+  width: min(14rem, 40vw);
+  height: 1px;
+  background-color: var(--tech-line);
+  overflow: hidden;
+}
+
+.tech-loading-bar span {
+  width: 100%;
+  height: 100%;
+  background-color: var(--tech-accent);
+  transform-origin: 0 50%;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  display: block;
+}
+
+/* No WebGL. The section still has to say what it was going to say. */
+.tech-fallback {
+  /* Fits itself to the list rather than to a count — seven marks in `repeat(3,
+     1fr)` left a lone tile on its own row. */
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  align-content: center;
+  gap: 1px;
+  padding: 1.25rem;
+  list-style: none;
+  display: grid;
+  position: absolute;
+  inset: 0;
+}
+
+.tech-fallback li {
+  gap: 0.75rem;
+  flex-flow: column;
+  padding: 2rem 1.5rem;
+  outline: 1px solid var(--tech-line);
+  display: flex;
+}
+
+.tech-fallback__name {
+  letter-spacing: -0.03em;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+@media (max-width: 991px) {
+  .tech-runway {
+    height: 1500vh;
+  }
+  /* Matches the hero's own switch to `svh`, so a mobile URL bar collapsing
+     cannot leave a strip of the runway showing under the pin. */
+  .tech-stage {
+    height: 100svh;
+  }
+  /*
+   * Both stay centred — there is nothing in the corners to work around any
+   * more. The word only needs a wider allowance per character, because a phone
+   * has no width to spend and the cap is what binds on a desktop instead.
+   */
+  .tech-intro {
+    font-size: clamp(2.25rem, 12.5vw, 5rem);
+  }
+  /*
+   * Half a phone is a word nobody reads. There are no corners to work around at
+   * this width either, so the name takes most of the screen instead.
+   */
+  .tech-word-w {
+    --tech-word-fill: 0.86;
+    padding: 3.75rem 0.875rem 0;
+  }
+  /*
+   * Cut into the bottom edge instead of the right one: a tab down the side of a
+   * phone would sit on the mark. Full width, so it needs no inverted corners —
+   * only its top ones rounded — and no list; the counter says where the stack
+   * is, and the rows are a desktop's way through it.
+   */
+  .tech-side {
+    --tech-side-r: 1.5rem;
+
+    width: auto;
+    /* Only as tall as the readout down here — 80% of a phone is the mark. */
+    height: auto;
+    padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom));
+    border-radius: var(--tech-side-r) var(--tech-side-r) 0 0;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    transform: translate3d(0, calc((1 - var(--tech-side-in)) * 110%), 0);
+  }
+  .tech-side::before,
+  .tech-side::after,
+  .tech-side__list {
+    display: none;
+  }
+  .tech-side__head {
+    height: 2.75rem;
+  }
+  .tech-side__count {
+    height: 2.25rem;
+  }
+  .tech-side__detail {
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+  .tech-side__deck--note {
+    padding-top: 0.75rem;
+  }
+  /* Under the tab now, and the counter in it says the same thing. */
+  .tech-progress {
+    display: none;
+  }
+  .tech-hint {
+    display: none;
+  }
+  .tech-fallback {
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  }
+  .tech-fallback li {
+    padding: 1.5rem 1rem;
+  }
+}
+
+/* A short laptop screen: the tab is the tallest thing on the stage. */
+@media (min-width: 992px) and (max-height: 780px) {
+  .tech-side__head {
+    height: 2.75rem;
+  }
+  .tech-side__count {
+    height: 2.25rem;
+  }
+  .tech-side .tech-note {
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    display: -webkit-box;
+    overflow: hidden;
+  }
+}
+
+/*
+ * Reduced motion keeps the morph — it is the reader's own scroll driving it,
+ * and the engine already strips out everything the page does on its own — but
+ * there is no reason to make them travel thirteen viewports for it.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .tech-runway {
+    height: 1050vh;
+  }
+  .tech-side__row,
+  .tech-loading-bar span {
+    transition: none;
+  }
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Projects — continues the showreel's black run                              */
+/*  Showcase — the portfolio slider, framed (ShowcaseSection.tsx)              */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * One screen, handed whole to the slider's own page. Positioned and raised like
+ * the section it replaced, so it picks up the black run after the white room
+ * and sits under the stack section's z-index 4 as it scrolls up.
+ */
+.section.showcase {
+  height: 100vh;
+  height: 100svh;
+  position: relative;
+  z-index: 3;
+  background-color: var(--color-black);
+}
+
+.showcase-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Decrypting type (DecryptText.tsx) — the loader's name effect, reusable     */
+/* -------------------------------------------------------------------------- */
+
+.decrypt {
+  flex-flow: column;
+  display: flex;
+}
+
+/* Each line is the mask its letters rise out of. */
+.decrypt__line {
+  overflow: clip;
+  padding: 0.04em 0.02em;
+  display: flex;
+}
+
+.decrypt__char {
+  position: relative;
+  display: block;
+  will-change: transform;
+}
+
+/* The glyph rides over a hidden copy of the real letter, so noise never
+   changes the width of the line. */
+.decrypt__size {
+  visibility: hidden;
+}
+
+.decrypt__glyph {
+  justify-content: center;
+  display: flex;
+  position: absolute;
+  inset: 0;
+  transition: opacity 0.3s ease;
+}
+
+.decrypt__glyph.is-noise {
+  opacity: 0.4;
+}
+
+.decrypt__space {
+  flex: none;
+  width: 0.26em;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Contact and footer — shared furniture from the loader                      */
+/* -------------------------------------------------------------------------- */
+
+/* The loader's corner readouts. */
+.contact-eyebrow,
+.footer-eyebrow {
+  font-family: var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.46);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.contact-status,
+.footer-status {
+  gap: 0.625rem;
+  align-items: center;
+  display: flex;
+}
+
+/* The loader's status dot, blinking on the same keyframes. */
+.contact-status__dot,
+.footer-status__dot {
+  flex: none;
+  width: 0.375rem;
+  height: 0.375rem;
+  background-color: var(--site-accent);
+  box-shadow: 0 0 0.75rem var(--site-accent);
+  animation: loader-blink 1.1s steps(1, end) infinite;
+}
+
+/* The loader's graduated rule; the fill is scrubbed from the components. */
+.contact-rule,
+.footer-rule {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.12);
+  position: relative;
+}
+
+.contact-rule::before,
+.footer-rule::before {
+  content: "";
+  height: 0.25rem;
+  background-image: repeating-linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0.12) 0 1px,
+    transparent 1px 5%
+  );
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+.contact-rule span,
+.footer-rule span {
+  background-color: var(--site-accent);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  display: block;
+  position: absolute;
+  inset: 0;
+}
+
+/* The navbar's link type, for the indexes in both. */
+.contact-social,
+.footer-link {
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1;
+  transition: color 0.3s ease;
+}
+
+.contact-social:hover,
+.contact-social:focus-visible,
+.footer-link:hover,
+.footer-link:focus-visible {
+  color: var(--color-white);
+}
+
+.contact-social__n,
+.footer-link__n {
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  opacity: 0.45;
+  font-size: 0.6875rem;
+}
+
+.contact-social__arrow,
+.footer-link__arrow {
+  transition:
+    color 0.3s ease,
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.contact-social:hover .contact-social__arrow,
+.footer-link:hover .footer-link__arrow {
+  color: var(--site-accent);
+  transform: translate(2px, -2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contact-status__dot,
+  .footer-status__dot {
+    animation: none;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Contact (Contact.tsx)                                                      */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * One screen: readouts along the top, the heading and the ways in through the
+ * middle, the socials and the rule along the bottom — the loader's layout,
+ * with something to do on it.
+ */
+.section.contact {
+  min-height: 100vh;
+  min-height: 100svh;
+  gap: 3rem;
+  flex-flow: column;
+  justify-content: space-between;
+  padding: 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: var(--color-black);
+  color: var(--color-white);
+  display: flex;
+  position: relative;
+  z-index: 3;
+}
+
+.contact-row {
+  gap: 1rem;
+  justify-content: space-between;
+  display: flex;
+}
+
+.contact-time {
+  color: var(--color-white);
+  font-variant-numeric: tabular-nums;
+}
+
+.contact-main {
+  gap: 1.75rem;
+  flex-flow: column;
+  align-items: flex-start;
+  display: flex;
+}
+
+/* Tracked as tight as the loader's name. */
+.contact-title {
+  letter-spacing: -0.045em;
+  text-transform: uppercase;
+  font-size: clamp(3rem, 9.5vw, 10.5rem);
+  font-weight: 700;
+  line-height: 0.86;
+}
+
+/*
+ * The address as the largest link on the page. ScrambleLink's label layers do
+ * the decrypting on hover; the rule under it lights amber.
+ */
+.contact-email {
+  letter-spacing: -0.03em;
+  padding-bottom: 0.18em;
+  font-size: clamp(1.5rem, 4.2vw, 4rem);
+  font-weight: 500;
+  line-height: 1.1;
+  display: inline-flex;
+  position: relative;
+}
+
+.contact-email::after {
+  content: "";
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.3);
+  transition: background-color 0.3s ease;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+.contact-email:hover::after,
+.contact-email:focus-visible::after {
+  background-color: var(--site-accent);
+}
+
+.contact-cta {
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  display: flex;
+}
+
+.contact-foot {
+  gap: 1rem;
+  flex-flow: column;
+  display: flex;
+}
+
+.contact-socials {
+  list-style: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  display: grid;
+}
+
+.contact-social {
+  gap: 0.75rem;
+  align-items: center;
+  padding: 1.25rem 1rem 1.25rem 0;
+  display: flex;
+}
+
+.contact-socials li + li .contact-social {
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  padding-left: 1rem;
+}
+
+.contact-social__arrow {
+  margin-left: auto;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Footer (Footer.tsx)                                                        */
+/* -------------------------------------------------------------------------- */
+
+.footer {
+  padding: 4.5rem 1.25rem 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: var(--color-black);
+  color: var(--color-white);
+  position: relative;
+  z-index: 3;
+  overflow: hidden;
+}
+
+.footer-top {
+  gap: 2rem;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  display: grid;
+}
+
+.footer-blurb {
+  max-width: 22rem;
+  margin-top: 1rem;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.footer-list {
+  list-style: none;
+  gap: 0.75rem;
+  flex-flow: column;
+  margin-top: 1rem;
+  display: flex;
+}
+
+.footer-link {
+  gap: 0.625rem;
+  align-items: center;
+  display: inline-flex;
+}
+
+.footer-col--end {
+  justify-content: flex-end;
+  align-items: flex-start;
+  display: flex;
+}
+
+/* The navbar's CTA pill — a label, and a grey pill that lights on hover. */
+.footer-top-btn {
+  height: 3.25rem;
+  gap: 1rem;
+  align-items: center;
+  padding: 0 0.25rem 0 1.5rem;
+  border: 0;
+  border-radius: 999px;
+  background-color: #161616;
+  color: var(--color-white);
+  font-family: inherit;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  display: flex;
+}
+
+.footer-top-btn span {
+  width: 3.5rem;
+  height: 2.75rem;
+  place-items: center;
+  border-radius: 999px;
+  background-color: #3a3a3a;
+  font-size: 1rem;
+  transition:
+    background-color 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  display: grid;
+}
+
+.footer-top-btn:hover span,
+.footer-top-btn:focus-visible span {
+  background-color: var(--color-white);
+  color: var(--color-black);
+}
+
+.footer-top-btn:focus-visible {
+  outline: 2px solid var(--color-white);
+  outline-offset: 2px;
+}
+
+.footer-meter {
+  gap: 1rem;
+  flex-flow: column;
+  margin-top: 4.5rem;
+  display: flex;
+}
+
+.footer-meter__row {
+  justify-content: space-between;
+  align-items: flex-end;
+  display: flex;
+}
+
+.footer-status {
+  padding-bottom: 0.35rem;
+}
+
+/* The loader's counter: fixed-width windows over strips of eleven digits. */
+.footer-count {
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  align-items: flex-start;
+  font-size: clamp(2.5rem, 6vw, 5.5rem);
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+}
+
+.footer-digit {
+  width: 0.66em;
+  height: 1em;
+  overflow: clip;
+  display: block;
+}
+
+.footer-digit__strip {
+  flex-flow: column;
+  display: flex;
+  will-change: transform;
+}
+
+.footer-digit__strip span {
+  height: 1em;
+  text-align: center;
+  display: block;
+}
+
+.footer-count__unit {
+  font-family: var(--font-mono);
+  letter-spacing: 0;
+  color: var(--site-accent);
+  margin: 0.2em 0 0 0.25em;
+  font-size: 0.24em;
+  font-weight: 500;
+}
+
+/* The name across the full width — solved for "Khubaib Shahid" at this
+   tracking, the way the loader's name is solved for its own line. */
+.footer-wordmark {
+  margin-top: 2.5rem;
+  letter-spacing: -0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  font-size: 11.4vw;
+  font-weight: 700;
+  line-height: 0.84;
+}
+
+.footer-wordmark .decrypt__line {
+  justify-content: center;
+}
+
+.footer-bottom {
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  justify-content: space-between;
+  margin-top: 1.5rem;
+  display: flex;
+}
+
+@media (max-width: 991px) {
+  .section.contact {
+    padding: 1rem;
+  }
+  .contact-socials {
+    grid-template-columns: 1fr;
+  }
+  .contact-socials li + li .contact-social {
+    border-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    padding-left: 0;
+  }
+  .footer {
+    padding: 3.5rem 1rem 1rem;
+  }
+  .footer-top {
+    grid-template-columns: 1fr 1fr;
+  }
+  .footer-top > .footer-col:first-child,
+  .footer-col--end {
+    grid-column: 1 / -1;
+  }
+  .footer-col--end {
+    justify-content: flex-start;
+  }
+  .footer-meter {
+    margin-top: 3rem;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Projects — picks the black run back up after the white room              */
 /* -------------------------------------------------------------------------- */
 
 .section.projects {
+  /* At least a screen tall, or the page ends before the navbar's `Work` link
+     can bring this section's top to the top of the screen. */
+  min-height: 100svh;
   position: relative;
   z-index: 3;
   background-color: var(--color-black);
@@ -978,7 +2717,7 @@ img {
 /* -------------------------------------------------------------------------- */
 
 /*
- * Above the nav and the loader, both of which sit at 1001.
+ * Above the nav (1001) and the loader (1002).
  */
 .project-detail {
   position: fixed;
@@ -986,8 +2725,9 @@ img {
   z-index: 2000;
 }
 
-/* See ProjectDetail: the blended nav costs a backdrop read per frame. */
-body.detail-open .nav-boiler {
+/* See ProjectDetail: a blended or blurred nav costs a backdrop read per frame. */
+body.detail-open .nav-boiler,
+body.detail-open .site-nav {
   visibility: hidden;
 }
 
@@ -1192,31 +2932,6 @@ body.detail-open .nav-boiler {
   }
 }
 
-.video-showreel-full-w {
-  justify-content: flex-end;
-  align-self: flex-end;
-  align-items: flex-end;
-  width: 100%;
-  height: 100%;
-  margin-left: auto;
-  display: flex;
-  overflow: hidden;
-}
-
-.showreel-stage {
-  height: 100vh;
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  padding: 1.25rem;
-}
-
-.showreel-media {
-  width: 100%;
-  height: 100%;
-  background: url(/simple-bg.png) no-repeat center / cover;
-}
-
 .h1-home {
   letter-spacing: -0.03em;
   font-size: 5rem;
@@ -1249,7 +2964,7 @@ body.detail-open .nav-boiler {
     padding-left: 1rem;
     padding-right: 1rem;
   }
-  .section.showreel {
+  .section.tech {
     margin-top: 0;
   }
   /* No stage to scrub over: the about section stacks like any other block, and
@@ -1261,6 +2976,9 @@ body.detail-open .nav-boiler {
   }
   .section.about::before {
     display: none;
+  }
+  .about-anchor {
+    top: 0;
   }
   .about-stage {
     position: static;
@@ -1274,6 +2992,7 @@ body.detail-open .nav-boiler {
     inset: auto;
     width: 100%;
     height: 65vh;
+    border-radius: 0;
   }
   /* Stacked under the image rather than beside it, and visible from the start:
      the scrub that would otherwise fade it in never runs down here. */
@@ -1287,6 +3006,9 @@ body.detail-open .nav-boiler {
   }
   .about-title {
     font-size: 2.25rem;
+  }
+  .about-socials {
+    margin-top: 1.75rem;
   }
   .hero-about-note {
     position: static;
