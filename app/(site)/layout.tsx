@@ -2,14 +2,25 @@ import type { Metadata } from "next";
 import "../globals.css";
 import SmoothScroll from "@/components/SmoothScroll";
 
+const TITLE = "Khubaib Shahid — Full-Stack & AI Developer";
+
+const DESCRIPTION =
+  "I build for the web end to end — interfaces people actually enjoy using, the services running behind them, and the AI woven through both.";
+
+/*
+ * The favicon is `icon.svg` beside this file — the K with the loader's amber
+ * dot — and `apple-icon.png` is the same drawing, square, for home screens.
+ */
 export const metadata: Metadata = {
-  title: "Nothin' | Home",
-  description:
-    "Nothin' A protean augmented-creative studio in Paris. Branding, editorial, art direction & AI for fashion & luxury strategists who refuse the generic.",
+  title: {
+    default: TITLE,
+    // For any page added under this layout later.
+    template: "%s — Khubaib Shahid",
+  },
+  description: DESCRIPTION,
   openGraph: {
-    title: "Nothin' | Home",
-    description:
-      "A protean augmented-creative studio in Paris. Branding, editorial, art direction & AI.",
+    title: TITLE,
+    description: DESCRIPTION,
     type: "website",
   },
 };
