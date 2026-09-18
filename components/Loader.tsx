@@ -331,6 +331,12 @@ export default function Loader() {
           finished = true;
           gsap.ticker.remove(tick!);
           tick = null;
+          // The re-roll above is gated to 50ms steps, so the last tick can skip
+          // it. Settle every letter before the name leaves, whatever it holds.
+          glyphs.forEach((glyph, i) => {
+            glyph.classList.remove("is-noise");
+            glyph.textContent = letters[i].dataset.char!;
+          });
           exit();
         }
       };

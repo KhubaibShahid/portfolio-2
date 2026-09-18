@@ -146,6 +146,15 @@ html {
   height: auto;
   /* Lenis drives scrolling; native smooth behaviour would fight it. */
   scroll-behavior: auto;
+  /* No scrollbar: the page still scrolls by wheel, touch and keyboard, and
+     the loader, the stack runway and the footer all read out progress. */
+  scrollbar-width: none;
+}
+
+/* Chrome and Safari ignore `scrollbar-width` before 121 and 18.2. */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
 }
 
 body {

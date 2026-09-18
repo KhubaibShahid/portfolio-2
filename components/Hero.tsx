@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import HeroIntro from "./HeroIntro";
 import { MaskReveal } from "@/lib/fluid/MaskReveal";
+import { social } from "@/lib/contact";
 
 /**
  * The hero.
@@ -142,7 +143,7 @@ export default function Hero() {
             <div className="link-hero-lang-w">
               <div className="link-hero-w">
                 <a
-                  href="https://www.linkedin.com/company/nothin/"
+                  href={social("LinkedIn").href}
                   target="_blank"
                   rel="noreferrer"
                   className="link"
@@ -151,7 +152,7 @@ export default function Hero() {
                   <span className="link-underline" />
                 </a>
                 <a
-                  href="https://www.instagram.com/nothin.paris/"
+                  href={social("Instagram").href}
                   target="_blank"
                   rel="noreferrer"
                   className="link"

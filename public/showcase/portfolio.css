@@ -17,6 +17,16 @@
   display: none !important;
 }
 
+/* No scrollbar, to match the page this is framed in. */
+html {
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+}
+
 /* -------------------------------------------------------------------------- */
 /*  The cursor                                                                 */
 /* -------------------------------------------------------------------------- */

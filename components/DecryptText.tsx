@@ -87,7 +87,19 @@ export default function DecryptText({
             });
           }
 
-          if (elapsed < last) raf = requestAnimationFrame(tick);
+          if (elapsed < last) {
+            raf = requestAnimationFrame(tick);
+            return;
+          }
+
+          // The redraw above only runs when a new 50ms roll starts, so the frame
+          // that ends the run can land in the same roll as the one before it
+          // and skip it — leaving the last letter on whatever noise it had.
+          // Settle every letter on the way out, whichever roll this is.
+          glyphs.forEach((glyph, i) => {
+            glyph.classList.remove("is-noise");
+            glyph.textContent = chars[i].dataset.char!;
+          });
         };
 
         raf = requestAnimationFrame(tick);
